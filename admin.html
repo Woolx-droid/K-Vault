@@ -159,7 +159,8 @@
       font-size: 13px;
       color: #333;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.14s ease;
+      will-change: transform, background-color, border-color;
     }
     .folder-node:hover {
       border-color: rgba(138, 75, 255, 0.25);
@@ -249,12 +250,24 @@
       border-color: rgba(67, 195, 124, 0.8);
       background: rgba(67, 195, 124, 0.16);
       box-shadow: inset 0 0 0 1px rgba(67, 195, 124, 0.45);
+      transform: translateX(2px);
     }
     .content .el-card[draggable="true"] {
       cursor: grab;
+      user-select: none;
     }
     .content .el-card[draggable="true"]:active {
       cursor: grabbing;
+    }
+    .content .el-card.dragging-file-card {
+      opacity: 0.72;
+      transform: scale(0.985);
+    }
+    body.is-dragging-files .folder-node {
+      transition-duration: 0.12s;
+    }
+    body.is-dragging-files .folder-node.is-drop-target {
+      box-shadow: inset 0 0 0 1px rgba(67, 195, 124, 0.55), 0 4px 12px rgba(67, 195, 124, 0.18);
     }
     .empty-tip {
       margin: 26px auto 8px;
@@ -486,7 +499,7 @@
                 @click="selectFolder(folder.path)"
                 @dragover.prevent="handleFolderDragOver(folder.path, $event)"
                 @dragenter.prevent="handleFolderDragEnter(folder.path)"
-                @dragleave.prevent="handleFolderDragLeave(folder.path)"
+                @dragleave="handleFolderDragLeave(folder.path, $event)"
                 @drop.prevent="handleFolderDrop(folder.path, $event)"
               >
                 <span class="folder-node-main" :style="{ paddingLeft: (folder.depth * 14 + 6) + 'px' }">
@@ -866,6 +879,8 @@
         active: false,
         fileIds: [],
         targetPath: null,
+        leaveTimer: null,
+        rafId: null,
       },
       loadMode: 'normal', // normal | dataSaver | noImage
       safeMode: true, // NSFW 安全模式
@@ -1382,19 +1397,39 @@
       handleFileDragStart(item, event) {
         const ids = this.resolveDraggedIds(item);
         if (!ids.length) return;
+        if (event?.currentTarget?.classList) {
+          event.currentTarget.classList.add('dragging-file-card');
+        }
         this.dragState.active = true;
         this.dragState.fileIds = ids;
         this.dragState.targetPath = null;
+        document.body.classList.add('is-dragging-files');
         if (event && event.dataTransfer) {
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('application/x-kvault-files', JSON.stringify(ids));
           event.dataTransfer.setData('text/plain', ids.join(','));
+          const dragGhost = document.createElement('div');
+          dragGhost.textContent = ids.length > 1 ? `移动 ${ids.length} 个文件` : (item?.metadata?.fileName || item?.name || '移动文件');
+          dragGhost.style.cssText = 'position:fixed;top:-9999px;left:-9999px;padding:8px 12px;border-radius:999px;background:rgba(19,29,48,0.92);color:#fff;font-size:12px;pointer-events:none;z-index:9999;';
+          document.body.appendChild(dragGhost);
+          event.dataTransfer.setDragImage(dragGhost, 18, 16);
+          requestAnimationFrame(() => dragGhost.remove());
         }
       },
       handleFileDragEnd() {
+        if (this.dragState.leaveTimer) {
+          clearTimeout(this.dragState.leaveTimer);
+          this.dragState.leaveTimer = null;
+        }
+        if (this.dragState.rafId) {
+          cancelAnimationFrame(this.dragState.rafId);
+          this.dragState.rafId = null;
+        }
         this.dragState.active = false;
         this.dragState.fileIds = [];
         this.dragState.targetPath = null;
+        document.body.classList.remove('is-dragging-files');
+        document.querySelectorAll('.dragging-file-card').forEach((node) => node.classList.remove('dragging-file-card'));
       },
       handleFolderDragOver(path, event) {
         if (!this.dragState.active) return;
@@ -1404,11 +1439,38 @@
       },
       handleFolderDragEnter(path) {
         if (!this.dragState.active) return;
-        this.dragState.targetPath = this.normalizeFolderPath(path);
+        const normalizedPath = this.normalizeFolderPath(path);
+        if (this.dragState.leaveTimer) {
+          clearTimeout(this.dragState.leaveTimer);
+          this.dragState.leaveTimer = null;
+        }
+        if (this.dragState.targetPath === normalizedPath) return;
+        if (this.dragState.rafId) {
+          cancelAnimationFrame(this.dragState.rafId);
+          this.dragState.rafId = null;
+        }
+        this.dragState.rafId = requestAnimationFrame(() => {
+          this.dragState.targetPath = normalizedPath;
+          this.dragState.rafId = null;
+        });
       },
-      handleFolderDragLeave() {
+      handleFolderDragLeave(path, event) {
         if (!this.dragState.active) return;
-        this.dragState.targetPath = null;
+        const currentTarget = event?.currentTarget;
+        const relatedTarget = event?.relatedTarget;
+        if (currentTarget && relatedTarget && currentTarget.contains(relatedTarget)) {
+          return;
+        }
+        const normalizedPath = this.normalizeFolderPath(path);
+        if (this.dragState.leaveTimer) {
+          clearTimeout(this.dragState.leaveTimer);
+        }
+        this.dragState.leaveTimer = setTimeout(() => {
+          if (this.dragState.targetPath === normalizedPath) {
+            this.dragState.targetPath = null;
+          }
+          this.dragState.leaveTimer = null;
+        }, 60);
       },
       extractDragIds(event) {
         if (this.dragState.fileIds.length > 0) return this.dragState.fileIds;
@@ -1439,6 +1501,58 @@
           return;
         }
 
+        const idSet = new Set(ids);
+        const previousRows = this.tableData.map((file) => ({
+          ...file,
+          metadata: { ...(file.metadata || {}) },
+        }));
+        const previousFolders = this.cloneFoldersSnapshot();
+        const normalizedCurrentFolder = this.normalizeFolderPath(this.folderPath);
+        const movedRows = this.tableData
+          .filter((row) => idSet.has(row.name))
+          .map((row) => ({
+            name: row.name,
+            sourceFolderPath: this.normalizeFolderPath(row?.metadata?.folderPath || ''),
+          }));
+
+        // 先本地更新，拖拽交互更流畅
+        this.tableData = this.tableData
+          .map((row) => {
+            if (!idSet.has(row.name)) return row;
+            return {
+              ...row,
+              metadata: {
+                ...(row.metadata || {}),
+                folderPath: targetFolderPath,
+              },
+              selected: false,
+            };
+          })
+          .filter((row) => this.normalizeFolderPath(row?.metadata?.folderPath || '') === normalizedCurrentFolder);
+
+        movedRows.forEach((moved) => {
+          const sourceNode = (this.folders || []).find((folder) => {
+            const candidate = this.normalizeFolderPath(folder.path || folder.folderPath || '');
+            return candidate === moved.sourceFolderPath;
+          });
+          if (sourceNode && moved.sourceFolderPath !== targetFolderPath) {
+            sourceNode.fileCount = Math.max(0, Number(sourceNode.fileCount || 0) - 1);
+          }
+        });
+        if (targetFolderPath) {
+          this.ensureFolderBranchLocal(targetFolderPath);
+          const targetNode = (this.folders || []).find((folder) => {
+            const candidate = this.normalizeFolderPath(folder.path || folder.folderPath || '');
+            return candidate === targetFolderPath;
+          });
+          if (targetNode) {
+            const addCount = movedRows.filter((item) => item.sourceFolderPath !== targetFolderPath).length;
+            targetNode.fileCount = Number(targetNode.fileCount || 0) + addCount;
+          }
+        }
+        this.sortFoldersLocal();
+        this.updateStats();
+
         try {
           const result = await fetch('./api/manage/files/move-folder', {
             method: 'POST',
@@ -1449,8 +1563,11 @@
           if (!result.success) throw new Error(result.error || '拖拽移动失败');
           const folderLabel = targetFolderPath || '根目录';
           this.$message.success(`已移动 ${result.moved || 0} 个文件到 ${folderLabel}`);
-          await this.refreshFileList();
+          await this.fetchFolders();
         } catch (error) {
+          this.tableData = previousRows;
+          this.folders = previousFolders;
+          this.updateStats();
           this.$message.error(error.message || '拖拽移动失败');
         } finally {
           this.handleFileDragEnd();
@@ -1662,6 +1779,14 @@
         });
         this.tableData = Array.from(map.values());
       },
+      getListRequestLimit(forLoadMore = false) {
+        const base = this.viewMode === 'list' ? 40 : 24;
+        const videoPenalty = this.fileType === 'video' ? 8 : 0;
+        const dataSaverPenalty = this.loadMode === 'dataSaver' ? 6 : 0;
+        const grow = forLoadMore ? 12 : 0;
+        const limit = base + grow - videoPenalty - dataSaverPenalty;
+        return Math.max(12, Math.min(80, limit));
+      },
       sort(command) { this.sortOption = command; },  // 切换排序方式
       filter(command) { this.filterOption = command; },  // 切换筛选方式
       async switchStorageFilter(command) {
@@ -1675,7 +1800,7 @@
         try {
           const params = new URLSearchParams();
           params.set('cursor', String(this.nextCursor));
-          params.set('limit', '100');
+          params.set('limit', String(this.getListRequestLimit(true)));
           params.set('includeStats', '1');
           params.set('folderPath', this.folderPath || '');
           if (this.storageFilter && this.storageFilter !== 'all') {
@@ -1886,7 +2011,7 @@
       async refreshFileList() {  // 不刷新页面，仅更新数据
         try {
           const params = new URLSearchParams();
-          params.set('limit', '100');
+          params.set('limit', String(this.getListRequestLimit(false)));
           params.set('includeStats', '1');
           params.set('folderPath', this.folderPath || '');
           if (this.storageFilter && this.storageFilter !== 'all') {
@@ -2546,6 +2671,15 @@
     }
     ,
     beforeDestroy() {
+      document.body.classList.remove('is-dragging-files');
+      if (this.dragState.leaveTimer) {
+        clearTimeout(this.dragState.leaveTimer);
+        this.dragState.leaveTimer = null;
+      }
+      if (this.dragState.rafId) {
+        cancelAnimationFrame(this.dragState.rafId);
+        this.dragState.rafId = null;
+      }
       document.removeEventListener('mousemove', this.onBatchDrag);
       document.removeEventListener('mouseup', this.stopBatchDrag);
       window.removeEventListener('keydown', this.handleGlobalKeydown);
