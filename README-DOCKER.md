@@ -1,86 +1,114 @@
-﻿# K-Vault Docker Runtime Guide
+# K-Vault Docker 运行指南（中文）
 
-This repository now supports two deployment modes:
+English version: [README-DOCKER-EN.md](README-DOCKER-EN.md)
 
-1. Cloudflare Pages + Functions (existing mode)
-2. Docker self-host mode (new)
+---
 
-## Quick Start (Docker)
+## 部署模式概览
 
-1. Initialize `.env` and secrets (safe to rerun):
+当前仓库支持两种部署模式：
+
+1. Cloudflare Pages + Functions
+2. Docker 自托管（Node API + Nginx）
+
+---
+
+## 2026-03 部署变化
+
+### Cloudflare Pages
+
+- 推荐方式改为 Cloudflare Dashboard 直接连接 Git 仓库部署。
+- 仓库中的 `.github/workflows/pages-deploy.yml` 现在是说明型手动工作流（`workflow_dispatch`），默认不再依赖：
+  - `CF_API_TOKEN`
+  - `CF_ACCOUNT_ID`
+  - `CF_PAGES_PROJECT`
+- 如需 CLI 发布，请在你自己的环境使用 Wrangler 凭据执行。
+
+### Docker
+
+- Docker `web` 服务现在直接托管根目录静态页，和 Pages 入口保持一致：
+  - `/`
+  - `/admin.html`
+  - `/webdav.html`
+- 不再需要 `/app/*` 这类单独前端路径作为主流程。
+- `api` 与 `functions` 两端都提供了 `/api/health`，回归脚本可统一检查健康状态。
+
+---
+
+## Docker 快速开始
+
+1. 初始化 `.env`（可重复执行，已有密钥不会被覆盖）：
 
 ```bash
 npm run docker:init-env
 ```
 
-Alternative shell entrypoint:
+备用脚本：
 
 ```bash
 ./scripts/bootstrap-env.sh
 ```
 
-Note: `scripts/bootstrap-env.sh` must have executable permission.  
-If you are on Windows or the execute bit is unavailable, use:
+Windows 或无可执行权限环境可用：
 
 ```bash
 node scripts/bootstrap-env.js
 ```
 
-What this does:
-- if `.env` is missing, copy from `.env.example`
-- if `CONFIG_ENCRYPTION_KEY` / `SESSION_SECRET` are empty or placeholder values, generate secure random values
-- if those keys are already real values, keep them unchanged (prevents breaking decryption of existing storage configs)
+2. 至少补全以下配置：
 
-2. Fill at least these values in `.env`:
+- `CONFIG_ENCRYPTION_KEY`
+- `SESSION_SECRET`
+- 一套默认存储（例如 `TG_BOT_TOKEN` + `TG_CHAT_ID`）
+- 可选登录鉴权：`BASIC_USER` + `BASIC_PASS`
 
-- `BASIC_USER` / `BASIC_PASS` (optional, set both to enable login)
-- one bootstrap storage config (for example Telegram: `TG_BOT_TOKEN` + `TG_CHAT_ID`)
-- optional settings store mode:
-  - default: `SETTINGS_STORE=sqlite`
-  - Redis mode: set `SETTINGS_STORE=redis` and `SETTINGS_REDIS_URL`
-
-3. Start services:
+3. 启动服务：
 
 ```bash
 npm run docker:up
 ```
 
-4. Open:
+4. 访问地址：
 
-- Legacy UI: `http://<host>:8080/`
-- Vue3 App: `http://<host>:8080/app/`
+- 上传页：`http://<host>:8080/`
+- 后台管理：`http://<host>:8080/admin.html`
+- WebDAV 页面：`http://<host>:8080/webdav.html`
 
-Expected startup status:
+5. 检查状态：
 
 ```bash
 docker compose ps
 ```
 
-You should see:
-- `kvault-api` -> `Up ... (healthy)`
-- `kvault-web` -> `Up ...`
-- `kvault-redis` -> `Up ... (healthy)` when started with `--profile redis`
+预期：
 
-### Optional: start with local Redis settings store
+- `kvault-api` 为 `Up ... (healthy)`
+- `kvault-web` 为 `Up ...`
+- 若启用 Redis profile，`kvault-redis` 为 `Up ... (healthy)`
 
-If you prefer Redis for basic app settings (also compatible with Upstash/KVrocks protocol):
+---
 
-1. Set in `.env`:
+## 可选：启用 Redis 设置存储
+
+如果你希望基础设置（非文件本体）用 Redis：
+
+1. 在 `.env` 中设置：
    - `SETTINGS_STORE=redis`
    - `SETTINGS_REDIS_URL=redis://redis:6379`
-2. Start compose with Redis profile:
+2. 启动 Redis profile：
 
 ```bash
 docker compose --profile redis up -d --build
 ```
 
-## Login API (curl)
+---
 
-`/api/auth/login` accepts both payload shapes:
-- new: `{ "username": "...", "password": "..." }`
-- compatible: `{ "user": "...", "pass": "..." }`
+## 登录 API（curl 示例）
 
-Example:
+`/api/auth/login` 支持两种请求体：
+
+- 新格式：`{"username":"...","password":"..."}`
+- 兼容格式：`{"user":"...","pass":"..."}`
 
 ```bash
 curl -i -X POST "http://localhost:8080/api/auth/login" \
@@ -88,163 +116,127 @@ curl -i -X POST "http://localhost:8080/api/auth/login" \
   -d '{"username":"admin","password":"your_password"}'
 ```
 
-Compatibility example:
-
 ```bash
 curl -i -X POST "http://localhost:8080/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"user":"admin","pass":"your_password"}'
 ```
 
-## Architecture
+---
 
-- `api`: Node.js Hono backend (`server/`)
-  - SQLite metadata (`storage_configs`, `files`, `sessions`, `chunk_uploads`)
-  - Settings store abstraction:
-    - `sqlite` (`app_settings` table)
-    - `redis` (Upstash / Redis / KVrocks compatible via Redis protocol)
-  - Encrypted storage secrets (`CONFIG_ENCRYPTION_KEY`)
-  - Multi-backend adapters: Telegram / R2 / S3 / Discord / HuggingFace / WebDAV / GitHub / Google Drive / OneDrive
-- `web`: Nginx static host + reverse proxy
-  - `/api/*` -> backend
-  - `/upload` -> backend
-  - `/file/*` -> backend
-  - `/app/*` -> Vue3 SPA
-  - `/` and other legacy pages -> static legacy HTML
+## 架构说明
 
-Persistent data is stored in Docker volume `kvault_data` (and `kvault_redis` when Redis profile is enabled).
+- `api`：Node.js + Hono（`server/`）
+  - 元数据：SQLite（`storage_configs`、`files`、`sessions`、`chunk_uploads`）
+  - 设置存储：`sqlite` 或 `redis`
+  - 敏感配置加密：`CONFIG_ENCRYPTION_KEY`
+  - 存储后端：Telegram / R2 / S3 / Discord / HuggingFace / WebDAV / GitHub
+- `web`：Nginx 静态托管 + 反代
+  - `/api/*` -> `api:8787`
+  - `/upload` -> `api:8787/upload`
+  - `/file/*`、`/share/*` -> `api:8787`
+  - `/` -> 根目录静态页面
 
-## Drive Console Update (2026-03)
+持久化卷：
 
-Docker runtime now includes a new Vue Drive Console at:
+- `kvault_data`
+- `kvault_redis`（启用 Redis profile 时）
 
-- `http://<host>:8080/app/drive`
-- legacy alias route: `http://<host>:8080/app/admin` (redirects to Drive)
+---
 
-What is new:
+## Cloudflare Pages 说明（无 Dashboard 构建配置改造）
 
-- Folder tree + breadcrumbs + list/grid view
-- Create/rename/move/delete folders
-- Batch file move/delete
-- Drag-and-drop upload with queue, progress, retry, cancel
-- Copy direct links and signed share links (with expiry metadata)
-- Storage capability visibility now shows all adapters (configured or not), with status hints
+- 推荐流程：
+  1. Fork 仓库
+  2. 在 Cloudflare Pages 中连接 fork
+  3. 直接部署
+- 仓库中的 `.github/workflows/pages-deploy.yml` 只保留说明用途，不默认执行密钥化 CLI 发布。
 
-Direct-link compatibility:
+---
 
-- Existing `/file/:id` links remain unchanged
-- Signed share links are additive (`/share/:id?...`) and do not break old links
+## 推荐聚合方案（alist/openlist + WebDAV）
 
-## Cloudflare Pages Without Dashboard Build Settings
+为降低多网盘适配维护成本，推荐：
 
-If you want Pages to publish the latest `/app/*` UI while keeping dashboard build/output/env/bindings unchanged, use repository workflow:
+1. K-Vault 负责上传体验、直链与后台管理
+2. alist/openlist 负责上游多盘聚合
+3. K-Vault 通过 WebDAV 作为挂载入口接入聚合层
 
-- `.github/workflows/pages-deploy.yml`
+优势：
 
-This workflow:
+- 聚合层故障时，仅 WebDAV 对应存储受影响
+- 站点本体与其他直连存储可继续工作
 
-1. builds `frontend/dist` in GitHub Actions
-2. deploys with `wrangler pages deploy`
-3. includes `functions/` via `--functions=functions`
-4. uses `_redirects` so `/app/upload`, `/app/drive`, `/app/storage`, `/app/status` route to the SPA correctly
+---
 
-Required GitHub Secrets:
+## 网络说明
 
-- `CF_API_TOKEN`
-- `CF_ACCOUNT_ID`
-- `CF_PAGES_PROJECT`
+- `ports`：对宿主机开放端口（`web` 默认 `8080:80`）
+- `expose`：仅容器网络内部可见（`api:8787`、`redis:6379`）
 
-## Recommended Aggregation Pattern (alist/openlist)
+---
 
-To reduce long-term adapter maintenance, recommended production pattern:
+## 关键环境变量
 
-1. K-Vault focuses on:
-   - Drive UX
-   - direct/share links
-   - auth/audit/metadata
-2. alist/openlist focuses on:
-   - multi-provider aggregation (Google Drive/OneDrive/etc.)
-   - upstream mount/credential complexity
-3. K-Vault connects to alist/openlist through WebDAV adapter as a mounted backend.
-
-Suggested deployment:
-
-- Same VPS Docker host (simplest): deploy alist/openlist alongside K-Vault
-- Or independent node: expose WebDAV endpoint securely and connect from K-Vault WebDAV profile
-
-Failure isolation:
-
-- If aggregation layer is unavailable, only that WebDAV profile is unavailable
-- K-Vault site and other storage profiles continue to work
-- `/api/status` and Drive adapter cards show degraded state explicitly
-
-## Networking Notes
-
-- `ports` publishes container ports to host (`web` uses `${WEB_PORT:-8080}:80`)
-- `expose` is internal-only for compose services (`api:8787`, `redis:6379`)
-
-## Important Environment Variables
-
-| Variable | Description |
+| 变量 | 说明 |
 | :--- | :--- |
-| `CONFIG_ENCRYPTION_KEY` | Required. Encrypt/decrypt dynamic storage secrets in SQLite |
-| `SESSION_SECRET` | Session/signature secret |
-| `BASIC_USER` / `BASIC_PASS` | Admin login credentials (set both to enable auth) |
-| `UPLOAD_MAX_SIZE` | Global upload limit (bytes), default 100MB |
-| `UPLOAD_SMALL_FILE_THRESHOLD` | Switch threshold for direct/chunk upload |
-| `CHUNK_SIZE` | Chunk size in bytes |
-| `DEFAULT_STORAGE_TYPE` | Bootstrap storage type (`telegram`/`r2`/`s3`/`discord`/`huggingface`/`webdav`/`github`/`gdrive`/`onedrive`) |
-| `SETTINGS_STORE` | `sqlite` (default) or `redis` for basic app settings |
-| `SETTINGS_REDIS_URL` | Redis URL, for Upstash/Redis/KVrocks (required if `SETTINGS_STORE=redis`) |
-| `SETTINGS_REDIS_PREFIX` | Redis key prefix, default `k-vault` |
-| `SETTINGS_REDIS_CONNECT_TIMEOUT_MS` | Redis connect/ping timeout (ms), default `5000` |
-| `TG_BOT_TOKEN` + `TG_CHAT_ID` | Telegram bootstrap storage |
-| `R2_*` / `S3_*` / `DISCORD_*` / `HF_*` | Optional bootstrap configs for existing backends |
-| `WEBDAV_*` | WebDAV bootstrap config (`WEBDAV_BASE_URL`, auth, optional root path) |
-| `GITHUB_*` | GitHub bootstrap config (`repo`, `token`, `mode`, optional `release tag`/`prefix`) |
-| `GDRIVE_*` | Google Drive bootstrap config (`folderId`, service account or token) |
-| `ONEDRIVE_*` | OneDrive bootstrap config (access token or Graph client credentials) |
+| `CONFIG_ENCRYPTION_KEY` | 必填。加解密动态存储配置 |
+| `SESSION_SECRET` | Session/签名密钥 |
+| `BASIC_USER` / `BASIC_PASS` | 后台登录账号（同时设置才启用） |
+| `UPLOAD_MAX_SIZE` | 全局上传限制（字节） |
+| `UPLOAD_SMALL_FILE_THRESHOLD` | 直传/分片切换阈值 |
+| `CHUNK_SIZE` | 分片大小（字节） |
+| `DEFAULT_STORAGE_TYPE` | 默认存储类型（`telegram/r2/s3/discord/huggingface/webdav/github`） |
+| `SETTINGS_STORE` | 设置存储后端（`sqlite` 或 `redis`） |
+| `SETTINGS_REDIS_URL` | Redis URL（`SETTINGS_STORE=redis` 时必填） |
+| `SETTINGS_REDIS_PREFIX` | Redis key 前缀 |
+| `SETTINGS_REDIS_CONNECT_TIMEOUT_MS` | Redis 连接/心跳超时（毫秒） |
+| `TG_BOT_TOKEN` + `TG_CHAT_ID` | Telegram 引导配置 |
+| `R2_*` / `S3_*` / `DISCORD_*` / `HF_*` | 可选引导配置 |
+| `WEBDAV_*` | WebDAV 配置（`WEBDAV_BASE_URL`、认证、可选路径前缀） |
+| `GITHUB_*` | GitHub 配置（仓库、令牌、模式、可选 tag/prefix） |
 
-## Security Notes
+---
 
-- Never expose or commit tokens/secrets (`TG_BOT_TOKEN`, `DISCORD_BOT_TOKEN`, `HF_TOKEN`, `SESSION_SECRET`, `CONFIG_ENCRYPTION_KEY`, etc.)
-- If any token/secret may be leaked, rotate it immediately and restart related services
+## 安全提示
 
-## Manage List API
+- 不要把 token/secret 提交到仓库（如 `TG_BOT_TOKEN`、`DISCORD_BOT_TOKEN`、`HF_TOKEN`、`SESSION_SECRET`、`CONFIG_ENCRYPTION_KEY`）。
+- 若有泄露风险，立即轮换密钥并重启服务。
 
-`GET /api/manage/list` now defaults to the first page when query parameters are omitted.
+---
 
-Supported query parameters:
-- `limit` (or `pageSize` / `size`): items per page, default `100`, max `1000`
-- `cursor` (or `offset`): next offset returned by previous response
-- `page` (or `current`): page number (1-based), used when `cursor` is not provided
-- `storage`: `all`/`telegram`/`r2`/`s3`/`discord`/`huggingface`/`webdav`/`github`/`gdrive`/`onedrive`
-- `search`: fuzzy match on file name and id
-- `listType` (or `list_type`): `all`/`None`/`White`/`Block`
-- `includeStats` (or `stats`): `1|true|yes` to include summary stats
+## 管理列表 API（`/api/manage/list`）
 
-## New Storage Notes
+默认不带参数时返回第一页。
 
-- WebDAV adapter supports `PUT`/`GET`/`DELETE` and auto `MKCOL`; connection test uses `OPTIONS` then `PROPFIND`.
-- GitHub adapter supports two modes:
-  - `releases`: preferred for binary files and larger payloads.
-  - `contents`: best for small files/text and has tighter API write/size/rate constraints.
-- Google Drive adapter minimal mode:
-  - Recommended: service account + shared folder (`folderId` required).
-  - Supports `upload`/`download`/`delete`/`testConnection`.
-- OneDrive adapter minimal mode:
-  - Supports Graph access token mode and client-credentials mode.
-  - In client-credentials mode, `driveId` is required.
+支持参数：
 
-## Regression Checklist
+- `limit`（或 `pageSize` / `size`）：每页数量，默认 `100`，最大 `1000`
+- `cursor`（或 `offset`）：分页偏移
+- `page`（或 `current`）：页码（仅 cursor 为空时生效）
+- `storage`：`all/telegram/r2/s3/discord/huggingface/webdav/github`
+- `search`：按文件名和 id 模糊搜索
+- `listType`（或 `list_type`）：`all/None/White/Block`
+- `includeStats`（或 `stats`）：`1|true|yes` 返回统计
 
-Automated script:
+---
+
+## 新增存储说明
+
+- WebDAV：支持 `PUT/GET/DELETE`，自动 `MKCOL` 建目录；连通性检测采用 `OPTIONS` + `PROPFIND`。
+- GitHub：
+  - `releases`：更适合二进制与较大文件
+  - `contents`：更适合小文件/文本（API 限制更严格）
+
+---
+
+## 回归检查
 
 ```bash
 npm run regression:storage
 ```
 
-Optional create/update smoke config:
+可选烟测配置（示例 WebDAV）：
 
 ```bash
 BASE_URL=http://localhost:8080 \
@@ -254,100 +246,88 @@ SMOKE_STORAGE_CONFIG_JSON='{"baseUrl":"https://dav.example.com","username":"u","
 node scripts/storage-regression.js
 ```
 
-The script covers:
+脚本覆盖：
+
 - `health` / `status`
-- `login` (both payloads)
-- `storage` list/create/update/test/default
-- `upload/download/delete` on enabled storages
+- `login`（两种请求体）
+- `storage` 列表/创建/更新/测试/设默认
+- 已启用存储的上传/下载/删除
 
-## Deployment Notes
+---
 
-- Legacy and Vue3 frontends coexist in Docker mode.
-- Existing Cloudflare deployment flow remains unchanged.
-- In Docker mode, Cloudflare runtime quotas do not apply to the Node runtime itself.
-- Secrets must come from environment variables; do not hard-code.
-- New image workflow is available at `.github/workflows/docker-image.yml`:
-  - PR: build only
-  - main/tag push: build and push `k-vault-api` + `k-vault-web` images to GHCR
-- Default image names:
-  - `ghcr.io/<your-org-or-user>/k-vault-api`
-  - `ghcr.io/<your-org-or-user>/k-vault-web`
-- If your repository is private, make sure GitHub Packages visibility/permissions allow your target platform to pull images.
+## 部署补充
 
-## Platform Compatibility Notes
+- Docker 与 Cloudflare Pages 现在共用同一套根路径页面入口。
+- Cloudflare 部署方式本质未变：仍可 Fork 后连接 Pages 直接发布。
+- Docker 模式不受 Cloudflare 运行时配额约束（但会受你服务器资源限制）。
+- 新镜像工作流：`.github/workflows/docker-image.yml`
+  - PR：仅构建
+  - main/tag push：构建并推送 `k-vault-api` + `k-vault-web` 到 GHCR
+
+---
+
+## 平台兼容性说明
 
 ### Vercel
 
-- Not recommended for current Docker runtime architecture.
-- Main blockers are runtime and persistence model mismatch.
-  - Serverless function request body limit (4.5MB) conflicts with K-Vault upload flow.
-  - Function file system is read-only except temporary `/tmp`, which does not fit persistent SQLite + chunk files.
-- If deploying to Vercel, only static frontend hosting is practical without major backend refactor.
+- 不推荐当前架构直接部署后端。
+- 主要原因：函数体积/请求体限制与持久化模型不匹配。
 
 ### Zeabur
 
-- Suitable.
-- Supports Dockerfile/image-based deployment (Compose file is not directly supported as-is).
-- Recommended: deploy both `api` and `web` services, mount persistent volume for `/app/data`.
+- 可行，建议拆分 `api` 与 `web` 服务并挂载持久卷。
 
 ### ClawCloud
 
-- Suitable with container deployment flow.
-- Can migrate from Compose model to platform services.
-- Recommended: create separate services for backend and web (or adapt compose), and bind persistent storage for `/app/data`.
+- 可行，建议按容器服务方式拆分部署并绑定持久化存储。
 
-### NAS (e.g. fnOS / Feiniu NAS)
+### NAS（如 fnOS/飞牛）
 
-- Usually suitable when Docker/Compose is available.
-- Requirements: enable Docker/Compose, import `docker-compose.yml`, map persistent volume, and expose port 8080 (or custom `WEB_PORT`).
+- 具备 Docker/Compose 环境即可使用，导入 `docker-compose.yml` 后映射数据卷并开放端口。
+
+---
 
 ## FAQ
 
-### `.env` missing
-
-Run:
+### `.env` 不存在
 
 ```bash
 npm run docker:init-env
 ```
 
-This recreates `.env` from `.env.example` and only auto-fills secret keys when needed.
-
 ### `Failed to decrypt storage config "...". Check CONFIG_ENCRYPTION_KEY.`
 
-Cause: `CONFIG_ENCRYPTION_KEY` changed after encrypted configs were written to SQLite.
+原因：`CONFIG_ENCRYPTION_KEY` 与历史加密配置不一致。  
+处理：
 
-Fix:
-- restore the original `CONFIG_ENCRYPTION_KEY`
-- if the original key is lost, delete/recreate affected storage configs in DB
-- avoid editing `CONFIG_ENCRYPTION_KEY` on running instances unless you are doing a planned migration
+1. 恢复原密钥
+2. 若原密钥丢失，删除并重建对应存储配置
+3. 避免在运行中的实例随意更换加密密钥
 
-### Docker Compose buildx/bake warning
+### Docker Compose 的 buildx/bake 提示
 
-Some Docker versions print a bake-related hint/warning during `docker compose build`.
+某些 Docker 版本会出现 bake 相关提示，可忽略或按需启用/关闭：
 
-Options:
-- ignore it (build still works)
-- enable bake explicitly: `set COMPOSE_BAKE=true` (PowerShell: `$env:COMPOSE_BAKE='true'`)
-- or disable it: `set COMPOSE_BAKE=false`
-- if you see `Docker Compose is configured to build using Bake, but buildx isn't installed`:
-  - Ubuntu install command: `sudo apt-get install docker-buildx`
+- 启用：`COMPOSE_BAKE=true`
+- 关闭：`COMPOSE_BAKE=false`
+- 若提示缺少 buildx，请安装 `docker-buildx`
 
-## Local Development
+---
 
-- Backend:
+## 本地开发
+
+后端：
 
 ```bash
 npm --prefix server install
 npm --prefix server run dev
 ```
 
-- Frontend:
+前端：
 
 ```bash
 npm --prefix frontend install
 npm --prefix frontend run dev
 ```
 
-Vue app runs under `/app/` in production build. Legacy pages are copied into the frontend image to keep feature parity during migration.
-
+Docker 运行时当前以根目录静态页为主，与 Cloudflare Pages 行为对齐。

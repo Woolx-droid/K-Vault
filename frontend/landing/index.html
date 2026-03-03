@@ -195,15 +195,15 @@
           <span class="dot"></span>
           <div>
             <h1>K-Vault</h1>
-            <p>Unified Upload + Drive + Storage Console</p>
+            <p>Unified Upload + Admin + WebDAV Console</p>
           </div>
         </div>
         <nav class="nav">
-          <a href="/app/upload">Upload</a>
-          <a href="/app/drive">Drive</a>
-          <a href="/app/storage">Storage</a>
-          <a href="/app/status">Status</a>
-          <a href="/app/login">Login</a>
+          <a href="/">Upload</a>
+          <a href="/admin.html">Admin</a>
+          <a href="/webdav.html">WebDAV</a>
+          <a href="/login.html">Login</a>
+          <a href="/api/status">Status</a>
           <a href="/legacy/index.html">Legacy</a>
         </nav>
       </header>
@@ -211,37 +211,37 @@
       <section class="card hero">
         <h2>Upload files, manage folders, and copy direct links in one unified console.</h2>
         <p>
-          Start from Upload for quick sharing, switch to Drive for net-disk style management, and use Storage/Status
-          to diagnose adapter availability. Unconfigured storage shows explicit guidance instead of being silently hidden.
+          Start from Upload for direct sharing, use Admin for folder/file management, and use the dedicated WebDAV page
+          for mounted storage workflows. Status remains available through the API endpoint.
         </p>
         <div class="cta">
-          <a class="btn btn-primary" href="/app/upload">Start Uploading</a>
-          <a class="btn btn-ghost" href="/app/drive">Open Drive</a>
-          <a class="btn btn-ghost" href="/app/storage">Configure Storage</a>
-          <a class="btn btn-ghost" href="/app/status">View Status</a>
+          <a class="btn btn-primary" href="/">Start Uploading</a>
+          <a class="btn btn-ghost" href="/admin.html">Open Admin</a>
+          <a class="btn btn-ghost" href="/webdav.html">Open WebDAV</a>
+          <a class="btn btn-ghost" href="/api/status">View Status JSON</a>
         </div>
       </section>
 
       <section class="grid">
         <article class="card tile">
           <h3>Upload</h3>
-          <p>Drag files, URL upload, progress tracking, and clearer failure reasons.</p>
-          <a href="/app/upload">Go to Upload</a>
+          <p>Drag files, URL upload, progress tracking, and direct-link output.</p>
+          <a href="/">Go to Upload</a>
         </article>
         <article class="card tile">
-          <h3>Drive</h3>
-          <p>Folder tree, breadcrumbs, batch move/delete, direct and signed share links.</p>
-          <a href="/app/drive">Go to Drive</a>
+          <h3>Admin</h3>
+          <p>Folder tree, batch move/delete, and direct-link actions in one panel.</p>
+          <a href="/admin.html">Go to Admin</a>
         </article>
         <article class="card tile">
-          <h3>Storage</h3>
-          <p>See all adapters and configure them with visible availability and hints.</p>
-          <a href="/app/storage">Go to Storage</a>
+          <h3>WebDAV</h3>
+          <p>Dedicated WebDAV upload page with the same UI language as the main site.</p>
+          <a href="/webdav.html">Go to WebDAV</a>
         </article>
         <article class="card tile">
           <h3>Status</h3>
-          <p>Human-readable diagnostics for Telegram/auth/network/quota/rate-limit issues.</p>
-          <a href="/app/status">Go to Status</a>
+          <p>Adapter status and diagnostics are exposed via API for troubleshooting.</p>
+          <a href="/api/status">Go to Status</a>
         </article>
       </section>
     </div>

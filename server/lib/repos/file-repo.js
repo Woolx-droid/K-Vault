@@ -586,8 +586,6 @@ class FileRepository {
       huggingface: 0,
       webdav: 0,
       github: 0,
-      gdrive: 0,
-      onedrive: 0,
     };
 
     rows.forEach((row) => {

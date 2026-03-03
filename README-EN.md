@@ -57,12 +57,12 @@
 - **Dual Deployment Modes** - Keep Cloudflare Pages deployment, and add Docker self-host deployment (`docker compose up -d`)
 - **Dynamic Storage Config Management** - Add/Edit/Delete/Test storage configs and switch default storage via admin API
 - **Pluggable Settings Store (Docker)** - Basic app settings can use `sqlite` (default) or Redis protocol backends (Upstash / Redis / KVrocks)
-- **Vue3 Modern Frontend** - New Vue3 app under `/app/`, while legacy pages remain available for compatibility
+- **Simplified Frontend** - Root pages remain the primary UX for upload/admin deployment.
 - **GitHub Actions Docker Build** - Auto-build/push `api` + `web` images on main/tag push
 
 ### 2026-03 Product Update
 
-- New Drive Console in Vue app (`/app/drive`) with:
+- Admin and folder console are now on root page (`/admin.html`) with:
   - folder tree + breadcrumbs
   - file/folder operations (create, rename, move, delete, batch actions)
   - drag upload queue (progress, retry, cancel)
@@ -72,23 +72,16 @@
 
 ### Cloudflare Pages (No Dashboard Build Setting Changes)
 
-A CI deployment path is included in `.github/workflows/pages-deploy.yml`.
+A lightweight workflow note is included in `.github/workflows/pages-deploy.yml`.
 
-- Build runs in GitHub Actions (`frontend/dist`).
-- Deployment uses `wrangler pages deploy`.
-- Functions are included with `--functions=functions`.
-- `_redirects` keeps SPA routes (`/app/upload`, `/app/drive`, `/app/storage`, `/app/status`) working.
-
-Required repository secrets:
-
-- `CF_API_TOKEN`
-- `CF_ACCOUNT_ID`
-- `CF_PAGES_PROJECT`
+- No Cloudflare API secrets are required in this repository by default.
+- Recommended deployment path is Cloudflare Pages Git integration (connect your fork directly in Cloudflare Dashboard).
+- If you want CLI deployment, run Wrangler locally with your own credentials.
 
 Recommended architecture for multi-cloud mounts:
 
 - Use `WebDAV` adapter in K-Vault as a mounted entry.
-- Use `alist/openlist` as aggregation layer for Google Drive / OneDrive / other providers.
+- Use `alist/openlist` as aggregation layer for other providers.
 - This keeps K-Vault focused on UX/link/auth while reducing adapter maintenance complexity.
 
 ---
@@ -120,17 +113,17 @@ Recommended architecture for multi-cloud mounts:
 
 2. **Create a Pages project**
    - Log in to [Cloudflare Dashboard](https://dash.cloudflare.com)
-   - Go to `Workers and Pages` → `Create Application` → `Pages` → `Connect to Git`
+   - Go to `Workers and Pages` 鈫?`Create Application` 鈫?`Pages` 鈫?`Connect to Git`
    - Select the forked repository and deploy
 
 3. **Configure environment variables**
-   - Go to project `Settings` → `Environment variables`
+   - Go to project `Settings` 鈫?`Environment variables`
    - Add required variables:
 
 | Variable | Description | Required |
 | :--- | :--- | :---: |
-| `TG_Bot_Token` | Telegram Bot Token | ✅ |
-| `TG_Chat_ID` | Telegram channel ID | ✅ |
+| `TG_Bot_Token` | Telegram Bot Token | 鉁?|
+| `TG_Chat_ID` | Telegram channel ID | 鉁?|
 | `TG_BOT_TOKEN` | Telegram Bot Token (Docker/self-host naming) | Optional |
 | `TG_CHAT_ID` | Telegram channel ID (Docker/self-host naming) | Optional |
 | `BASIC_USER` | Admin username | Optional |
@@ -170,7 +163,7 @@ docker compose --profile redis up -d --build
 
 4. Access:
    - Legacy UI: `http://<host>:8080/`
-   - Vue3 UI: `http://<host>:8080/app/`
+   - WebDAV page: `http://<host>:8080/webdav.html`
 
 For full Docker guide, see [README-DOCKER.md](README-DOCKER.md).
 
@@ -239,9 +232,9 @@ After enabling this, Telegram files still write a lightweight KV index by defaul
 
 To enable image management, configure KV:
 
-1. Go to Cloudflare Dashboard → `Workers and Pages` → `KV`
+1. Go to Cloudflare Dashboard 鈫?`Workers and Pages` 鈫?`KV`
 2. Click `Create namespace`, name it `k-vault`
-3. Go to your Pages project → `Settings` → `Functions` → `KV namespace bindings`
+3. Go to your Pages project 鈫?`Settings` 鈫?`Functions` 鈫?`KV namespace bindings`
 4. Add binding: variable name `img_url`, choose the namespace you created
 5. Redeploy the project
 
@@ -250,15 +243,15 @@ To enable image management, configure KV:
 Configure R2 to support uploads up to 100MB:
 
 1. **Create a bucket**
-   - Cloudflare Dashboard → `R2 Object Storage` → `Create bucket`
+   - Cloudflare Dashboard 鈫?`R2 Object Storage` 鈫?`Create bucket`
    - Name it `k-vault-files`
 
 2. **Bind to the project**
-   - Pages project → `Settings` → `Functions` → `R2 bucket bindings`
+   - Pages project 鈫?`Settings` 鈫?`Functions` 鈫?`R2 bucket bindings`
    - Variable name `R2_BUCKET`, choose your bucket
 
 3. **Enable R2**
-   - `Settings` → `Environment variables` → add `USE_R2` = `true`
+   - `Settings` 鈫?`Environment variables` 鈫?add `USE_R2` = `true`
    - Redeploy
 
 ### S3-Compatible Storage (Optional)
@@ -308,7 +301,7 @@ Store files through a Discord channel, supporting both Webhook and Bot modes.
 
 **Webhook deployment (recommended):**
 
-1. In your Discord server, go to channel settings → Integrations → Webhooks
+1. In your Discord server, go to channel settings 鈫?Integrations 鈫?Webhooks
 2. Create a new Webhook and copy the Webhook URL
 3. Add environment variable `DISCORD_WEBHOOK_URL` in Cloudflare Pages
 4. (Recommended) Also create a Discord Bot and set `DISCORD_BOT_TOKEN` for file retrieval and deletion
@@ -318,7 +311,7 @@ Store files through a Discord channel, supporting both Webhook and Bot modes.
 
 1. Go to [Discord Developer Portal](https://discord.com/developers/applications) and create an application
 2. Create a Bot in the Bot tab and get the token
-3. In OAuth2 → URL Generator, select `bot` scope and grant `Administrator` permission to the Bot
+3. In OAuth2 鈫?URL Generator, select `bot` scope and grant `Administrator` permission to the Bot
 4. Use the generated URL to invite the Bot to your server
 5. Add `DISCORD_BOT_TOKEN` and `DISCORD_CHANNEL_ID` in Cloudflare Pages
 6. Redeploy
@@ -349,8 +342,8 @@ Use HuggingFace Datasets API to store files. Files are saved to a Dataset reposi
 **Deployment steps:**
 
 1. Register a [HuggingFace](https://huggingface.co) account
-2. Create a new Dataset repository (Settings → New Dataset)
-3. Go to [Settings → Access Tokens](https://huggingface.co/settings/tokens) and create a token (requires Write permission)
+2. Create a new Dataset repository (Settings 鈫?New Dataset)
+3. Go to [Settings 鈫?Access Tokens](https://huggingface.co/settings/tokens) and create a token (requires Write permission)
 4. Add `HF_TOKEN` and `HF_REPO` environment variables in Cloudflare Pages
 5. Redeploy
 
@@ -432,7 +425,7 @@ Allows non-logged-in users to upload files. Site owners can configure whether it
 | Page | Path | Description |
 | :--- | :--- | :--- |
 | Home/Upload | `/` | Batch upload, drag-and-drop, paste upload |
-| Vue3 App | `/app/` | New Vue3 frontend (Upload/Admin/Storage pages) |
+| WebDAV Page | `/webdav.html` | Dedicated WebDAV upload page with root-style UI |
 | Gallery | `/gallery.html` | Image grid browsing |
 | Admin Panel | `/admin.html` | File management, blacklist/whitelist |
 | File Preview | `/preview.html` | Multi-format file preview |
@@ -470,8 +463,8 @@ Allows non-logged-in users to upload files. Site owners can configure whether it
 
 | Variable | Description | Required |
 | :--- | :--- | :---: |
-| `TG_Bot_Token` | Telegram Bot Token | ✅ |
-| `TG_Chat_ID` | Telegram channel ID | ✅ |
+| `TG_Bot_Token` | Telegram Bot Token | 鉁?|
+| `TG_Chat_ID` | Telegram channel ID | 鉁?|
 | `CUSTOM_BOT_API_URL` | Self-hosted Telegram Bot API URL | Optional |
 | `PUBLIC_BASE_URL` | Webhook backlink domain | Optional |
 | `TG_WEBHOOK_SECRET` | Telegram Webhook secret | Optional |
@@ -548,3 +541,4 @@ MIT License
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=katelya77/K-Vault&type=Date)](https://star-history.com/#katelya77/K-Vault&Date)
+

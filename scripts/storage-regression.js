@@ -126,7 +126,7 @@ async function checkHealthAndStatus() {
   logOk('/api/health ok');
 
   const status = await request('/api/status');
-  const storageKeys = ['telegram', 'r2', 's3', 'discord', 'huggingface', 'webdav', 'github', 'gdrive', 'onedrive'];
+  const storageKeys = ['telegram', 'r2', 's3', 'discord', 'huggingface', 'webdav', 'github'];
   for (const key of storageKeys) {
     if (!Object.prototype.hasOwnProperty.call(status.payload || {}, key)) {
       throw new Error(`/api/status missing key: ${key}`);

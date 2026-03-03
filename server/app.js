@@ -619,8 +619,6 @@ function createApp() {
       huggingface: { connected: false, enabled: false, configured: false, layer: 'direct', message: 'Not configured' },
       webdav: { connected: false, enabled: false, configured: false, layer: 'mounted', message: 'Not configured' },
       github: { connected: false, enabled: false, configured: false, layer: 'direct', message: 'Not configured' },
-      gdrive: { connected: false, enabled: false, configured: false, layer: 'direct', message: 'Not configured' },
-      onedrive: { connected: false, enabled: false, configured: false, layer: 'direct', message: 'Not configured' },
       auth: {
         enabled: authService.isAuthRequired(),
         message: authService.isAuthRequired() ? 'Password auth enabled' : 'No auth required',
@@ -641,8 +639,6 @@ function createApp() {
       huggingface: configs.find((item) => item.type === 'huggingface') || null,
       webdav: configs.find((item) => item.type === 'webdav') || null,
       github: configs.find((item) => item.type === 'github') || null,
-      gdrive: configs.find((item) => item.type === 'gdrive') || null,
-      onedrive: configs.find((item) => item.type === 'onedrive') || null,
     };
 
     for (const [type, storageConfig] of Object.entries(byType)) {
@@ -734,8 +730,6 @@ function createApp() {
       { type: 'discord', label: 'Discord', layer: 'direct', enableHint: 'Create a Discord webhook or bot profile.' },
       { type: 'huggingface', label: 'HuggingFace', layer: 'direct', enableHint: 'Create a HuggingFace profile with token + dataset repo.' },
       { type: 'github', label: 'GitHub', layer: 'direct', enableHint: 'Create a GitHub profile in Releases or Contents mode.' },
-      { type: 'gdrive', label: 'Google Drive', layer: 'direct', enableHint: 'Create a Google Drive profile with folder ID and auth.' },
-      { type: 'onedrive', label: 'OneDrive', layer: 'direct', enableHint: 'Create a OneDrive profile with access token or app credentials.' },
       {
         type: 'webdav',
         label: 'WebDAV (Mounted)',
@@ -1166,6 +1160,23 @@ function createApp() {
     });
   });
 
+  app.get('/api/manage/folders', async (c) => {
+    const unauthorized = requireAuth(c);
+    if (unauthorized) return unauthorized;
+
+    const { fileRepo } = getServices(c);
+    const storage = c.req.query('storage') || 'all';
+
+    const folders = fileRepo.listFolderTree({
+      storageType: storage,
+    });
+
+    return c.json({
+      success: true,
+      folders,
+    });
+  });
+
   app.post('/api/drive/folders', async (c) => {
     const unauthorized = requireAuth(c);
     if (unauthorized) return unauthorized;
@@ -1178,6 +1189,19 @@ function createApp() {
       return jsonError(c, 400, 'PATH_REQUIRED', 'path is required.', 'Provide path or folderPath.');
     }
 
+    const folder = fileRepo.createFolder(path);
+    return c.json({ success: true, folder });
+  });
+  app.post('/api/manage/folders', async (c) => {
+    const unauthorized = requireAuth(c);
+    if (unauthorized) return unauthorized;
+
+    const { fileRepo } = getServices(c);
+    const body = await c.req.json().catch(() => ({}));
+    const path = normalizeFolderPath(body.path || body.folderPath);
+    if (!path) {
+      return jsonError(c, 400, 'PATH_REQUIRED', 'path is required.', 'Provide path or folderPath.');
+    }
     const folder = fileRepo.createFolder(path);
     return c.json({ success: true, folder });
   });
@@ -1204,6 +1228,26 @@ function createApp() {
       );
     }
 
+    const result = fileRepo.moveFolder(sourcePath, targetPath);
+    return c.json({ success: true, ...result });
+  });
+  app.put('/api/manage/folders', async (c) => {
+    const unauthorized = requireAuth(c);
+    if (unauthorized) return unauthorized;
+
+    const { fileRepo } = getServices(c);
+    const body = await c.req.json().catch(() => ({}));
+    const sourcePath = normalizeFolderPath(body.sourcePath || body.path || '');
+    const targetPath = normalizeFolderPath(body.targetPath || body.newPath || '');
+    if (!sourcePath || !targetPath) {
+      return jsonError(
+        c,
+        400,
+        'MOVE_PATHS_REQUIRED',
+        'sourcePath and targetPath are required.',
+        'Provide both sourcePath and targetPath.'
+      );
+    }
     const result = fileRepo.moveFolder(sourcePath, targetPath);
     return c.json({ success: true, ...result });
   });
@@ -1234,6 +1278,32 @@ function createApp() {
       ...result,
     });
   });
+  app.delete('/api/manage/folders', async (c) => {
+    const unauthorized = requireAuth(c);
+    if (unauthorized) return unauthorized;
+
+    const { fileRepo } = getServices(c);
+    const path = normalizeFolderPath(c.req.query('path'));
+    const recursive = isTruthy(c.req.query('recursive'));
+    if (!path) {
+      return jsonError(c, 400, 'PATH_REQUIRED', 'path is required.', 'Provide path query parameter.');
+    }
+
+    let movedFiles = 0;
+    if (recursive) {
+      const fileIds = fileRepo.listFileIdsByFolderPrefix(path);
+      const moved = fileRepo.moveFiles(fileIds, '');
+      movedFiles = Number(moved.moved || 0);
+    }
+
+    const result = fileRepo.deleteFolder(path, { recursive });
+    return c.json({
+      success: true,
+      recursive,
+      movedFiles,
+      ...result,
+    });
+  });
 
   app.post('/api/drive/files/move', async (c) => {
     const unauthorized = requireAuth(c);
@@ -1243,6 +1313,21 @@ function createApp() {
     const body = await c.req.json().catch(() => ({}));
     const ids = Array.isArray(body.ids) ? body.ids : [];
     const targetFolderPath = normalizeFolderPath(body.targetFolderPath || body.path || '');
+
+    const result = fileRepo.moveFiles(ids, targetFolderPath);
+    return c.json({
+      success: true,
+      ...result,
+    });
+  });
+  app.post('/api/manage/files/move-folder', async (c) => {
+    const unauthorized = requireAuth(c);
+    if (unauthorized) return unauthorized;
+
+    const { fileRepo } = getServices(c);
+    const body = await c.req.json().catch(() => ({}));
+    const ids = Array.isArray(body.ids) ? body.ids : [];
+    const targetFolderPath = normalizeFolderPath(body.targetFolderPath || body.folderPath || body.path || '');
 
     const result = fileRepo.moveFiles(ids, targetFolderPath);
     return c.json({

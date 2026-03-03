@@ -2,10 +2,10 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
-  base: '/app/',
+  base: '/',
   plugins: [vue()],
   build: {
-    outDir: 'dist/app',
+    outDir: 'dist',
     emptyOutDir: true,
   },
 });

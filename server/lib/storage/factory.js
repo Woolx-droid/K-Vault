@@ -4,8 +4,6 @@ const { DiscordStorageAdapter } = require('./adapters/discord');
 const { HuggingFaceStorageAdapter } = require('./adapters/huggingface');
 const { WebDAVStorageAdapter } = require('./adapters/webdav');
 const { GitHubStorageAdapter } = require('./adapters/github');
-const { GoogleDriveStorageAdapter } = require('./adapters/gdrive');
-const { OneDriveStorageAdapter } = require('./adapters/onedrive');
 const { normalizeStorageType } = require('./common');
 
 class StorageFactory {
@@ -41,10 +39,6 @@ class StorageFactory {
       adapter = new WebDAVStorageAdapter(config);
     } else if (type === 'github') {
       adapter = new GitHubStorageAdapter(config);
-    } else if (type === 'gdrive') {
-      adapter = new GoogleDriveStorageAdapter(config);
-    } else if (type === 'onedrive') {
-      adapter = new OneDriveStorageAdapter(config);
     } else {
       throw new Error(`Unsupported storage type: ${type}`);
     }

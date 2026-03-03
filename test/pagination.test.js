@@ -5,7 +5,11 @@ describe('KV list pagination', function () {
     return (await import('../functions/api/manage/list.js')).onRequest;
   }
 
-  const sampleKeys = [{ name: 'a' }, { name: 'b' }];
+  const now = Date.now();
+  const sampleKeys = [
+    { name: 'img:a', metadata: { fileName: 'a.jpg', TimeStamp: now - 1, fileSize: 123 } },
+    { name: 'img:b', metadata: { fileName: 'b.jpg', TimeStamp: now, fileSize: 456 } },
+  ];
   function mockEnv() {
     return {
       img_url: {

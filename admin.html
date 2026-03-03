@@ -1,1726 +1,1004 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>K-Vault | 管理后台</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Vault | Admin Console</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/logo.png">
   <link rel="shortcut icon" href="/favicon.ico">
   <link rel="stylesheet" href="/theme.css">
   <script src="/theme.js"></script>
-  <!-- Import CSS -->
-  <link rel="stylesheet" href="./admin-imgtc.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
-  <script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
   <style>
-    /* 底部消息提示样式 */
-    .el-message {
-      top: auto !important;
-      bottom: 40px !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
+    :root {
+      --wf-surface: rgba(255, 255, 255, 0.92);
+      --wf-border: rgba(255, 255, 255, 0.58);
+      --wf-shadow: 0 10px 28px rgba(20, 32, 55, 0.12);
+      --wf-shadow-soft: 0 6px 18px rgba(20, 32, 55, 0.1);
+      --wf-primary: #0f766e;
+      --wf-primary-soft: rgba(15, 118, 110, 0.13);
     }
-    .el-message-box__wrapper {
+
+    html[data-theme="dark"] {
+      --wf-surface: rgba(16, 26, 43, 0.9);
+      --wf-border: rgba(120, 145, 192, 0.32);
+      --wf-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      --wf-shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.3);
+      --wf-primary: #67d4c2;
+      --wf-primary-soft: rgba(103, 212, 194, 0.17);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(60vw 50vh at 12% 8%, rgba(12, 164, 133, 0.2), transparent 70%),
+        radial-gradient(50vw 45vh at 88% 14%, rgba(255, 166, 104, 0.24), transparent 72%),
+        linear-gradient(130deg, #eef6ff 0%, #ecfffa 50%, #fff4ea 100%);
+      color: #1f2937;
+      font-family: "Manrope", "Noto Sans SC", "PingFang SC", "Segoe UI", sans-serif;
+    }
+
+    html[data-theme="dark"] body {
+      color: #e7eeff;
+      background:
+        radial-gradient(60vw 50vh at 12% 8%, rgba(64, 129, 255, 0.2), transparent 70%),
+        radial-gradient(50vw 45vh at 88% 14%, rgba(68, 170, 146, 0.2), transparent 72%),
+        linear-gradient(140deg, #0a1222 0%, #0d1729 52%, #132237 100%);
+    }
+
+    .page {
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .header {
+      position: sticky;
+      top: 14px;
+      z-index: 50;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--wf-surface);
+      border: 1px solid var(--wf-border);
+      box-shadow: var(--wf-shadow-soft);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      margin-bottom: 14px;
     }
-    /* 预览弹窗 */
-    .preview-modal {
-      position: fixed;
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: "Sora", "Manrope", "Noto Sans SC", sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: inherit;
+      margin: 0;
+    }
+
+    .header-title i {
+      color: var(--wf-primary);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .action-link,
+    .load-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--wf-border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      min-height: 40px;
+      background: var(--wf-surface);
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      font-weight: 600;
+      box-shadow: 0 0 0 transparent;
+    }
+
+    .action-link:hover,
+    .load-btn:hover {
+      border-color: rgba(15, 118, 110, 0.4);
+      background: var(--wf-primary-soft);
+      box-shadow: var(--wf-shadow-soft);
+    }
+
+    .load-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 0 8px;
+    }
+
+    .load-btn {
+      min-width: 148px;
+      border-color: rgba(15, 118, 110, 0.24);
+      background: linear-gradient(135deg, rgba(15, 118, 110, 0.14), rgba(126, 214, 196, 0.2));
+    }
+
+    .load-btn[disabled] {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .explorer {
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    .folders,
+    .files {
+      border: 1px solid var(--wf-border);
+      background: var(--wf-surface);
+      border-radius: 16px;
+      box-shadow: var(--wf-shadow-soft);
+    }
+
+    .folders-head,
+    .files-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px;
+      border-bottom: 1px solid var(--wf-border);
+    }
+
+    .folders-head {
+      justify-content: space-between;
+    }
+
+    .folders-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .folder-tree {
+      max-height: 66vh;
+      overflow: auto;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .folder-item {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .folder-item:hover {
+      border-color: var(--wf-border);
+      background: var(--wf-primary-soft);
+    }
+
+    .folder-item.active {
+      border-color: rgba(15, 118, 110, 0.45);
+      background: var(--wf-primary-soft);
+    }
+
+    .folder-item-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .folder-item-count {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    html[data-theme="dark"] .folder-item-count {
+      color: #9aa9c7;
+    }
+
+    .files-toolbar input,
+    .files-toolbar select {
+      border: 1px solid var(--wf-border);
+      border-radius: 10px;
+      background: var(--wf-surface);
+      color: inherit;
+      padding: 10px;
+    }
+
+    .files-toolbar input {
+      min-width: 220px;
+      flex: 1;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      color: #64748b;
+      border-bottom: 1px solid var(--wf-border);
+    }
+
+    html[data-theme="dark"] .meta-row {
+      color: #9aa9c7;
+    }
+
+    .table-wrap {
+      max-height: 56vh;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      text-align: left;
+      border-bottom: 1px solid var(--wf-border);
+      padding: 9px;
+      font-size: 0.88rem;
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
       top: 0;
+      background: var(--wf-surface);
+      z-index: 2;
+    }
+
+    .storage-chip {
+      border: 1px solid var(--wf-border);
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    html[data-theme="dark"] .storage-chip {
+      color: #9aa9c7;
+    }
+
+    .row-actions {
+      display: inline-flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .row-actions .load-btn {
+      padding: 6px 8px;
+      min-height: auto;
+      font-size: 0.78rem;
+    }
+
+    .status-line {
+      font-size: 0.84rem;
+      color: #64748b;
+    }
+
+    html[data-theme="dark"] .status-line {
+      color: #9aa9c7;
+    }
+
+    .masonry {
+      column-count: 5;
+      column-gap: 14px;
+      margin: 0;
+    }
+
+    .masonry-item {
+      break-inside: avoid;
+      display: inline-block;
+      width: 100%;
+      margin: 0 0 14px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--wf-border);
+      background: var(--wf-surface);
+      box-shadow: var(--wf-shadow-soft);
+      cursor: zoom-in;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .masonry-item:hover {
+      box-shadow: var(--wf-shadow);
+    }
+
+    .masonry-item img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+      background: rgba(15, 23, 42, 0.06);
+    }
+
+    .masonry-caption {
+      padding: 10px 12px;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: #4b5563;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    html[data-theme="dark"] .masonry-caption {
+      color: #c1cde4;
+    }
+
+    .empty-state {
+      display: none;
+      text-align: center;
+      padding: 52px 20px;
+      border: 1px dashed var(--wf-border);
+      border-radius: 16px;
+      background: var(--wf-surface);
+      color: #6b7280;
+    }
+
+    .empty-state i {
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+      color: var(--wf-primary);
+    }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      background: rgba(2, 6, 23, 0.84);
+      backdrop-filter: blur(4px);
+    }
+
+    .lightbox.open {
+      display: flex;
+    }
+
+    .lightbox-content {
+      width: min(96vw, 1280px);
+      max-height: 90vh;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #050911;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.45);
+      position: relative;
+    }
+
+    .lightbox-content img {
+      display: block;
+      width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+    }
+
+    .lightbox-meta {
+      position: absolute;
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.92);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      padding: 20px;
-    }
-    .preview-modal img {
-      max-width: 90%;
-      max-height: 75vh;
-      border-radius: 8px;
-      object-fit: contain;
-    }
-    .preview-modal .iframe-container {
-      width: 90vw;
-      height: 75vh;
-      position: relative;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #000;
-    }
-    .preview-modal .iframe-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-    .preview-close {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      width: 48px;
-      height: 48px;
-      border: none;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.15);
-      color: white;
-      font-size: 1.5em;
-      cursor: pointer;
-      transition: all 0.3s;
-      z-index: 10001;
-    }
-    .preview-close:hover {
-      background: rgba(255, 255, 255, 0.35);
-      transform: rotate(90deg);
-    }
-    .preview-toolbar {
-      margin-top: 16px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 10px 20px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-    }
-    .preview-filename {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 0.9em;
-      max-width: 300px;
+      padding: 11px 14px;
+      color: #dbe9ff;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.74), rgba(0, 0, 0, 0.05));
+      font-size: 0.82rem;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
     }
-    .preview-btns {
-      display: flex;
-      gap: 8px;
+
+    .lightbox-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: background 0.2s ease;
+    }
+
+    .lightbox-close:hover {
+      background: rgba(0, 0, 0, 0.72);
+    }
+
+    @media (max-width: 1200px) {
+      .explorer {
+        grid-template-columns: 250px minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .explorer {
+        grid-template-columns: 1fr;
+      }
+
+      .folder-tree {
+        max-height: 260px;
+      }
+
+      .table-wrap {
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 10px;
+      }
+
+      .header {
+        top: 8px;
+        border-radius: 14px;
+        padding: 10px 12px;
+        flex-wrap: wrap;
+      }
+
+      .header-title {
+        font-size: 1rem;
+        width: 100%;
+      }
+
+      .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .header-actions::-webkit-scrollbar {
+        display: none;
+      }
+
+      .action-link {
+        flex: 0 0 auto;
+        font-size: 0.82rem;
+      }
+
+      .lightbox {
+        padding: 8px;
+      }
+
+      .lightbox-content {
+        width: 100%;
+        border-radius: 12px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .load-btn {
+        width: 100%;
+      }
     }
   </style>
   <link rel="stylesheet" href="/mobile-refactor.css">
 </head>
 <body>
-  <div id="app">
-    <el-container>
-      <el-header>
-        <div class="header-content">
-          <span class="home-btn" @click="goHome"><i class="fas fa-home"></i></span>
-          <span class="title" @click="refreshDashboard">Dashboard</span>
-          <div class="search-card"><el-input v-model="search" size="mini" placeholder="输入关键字搜索"></el-input></div>
-          <span class="stats" role="status" aria-live="polite">
-            <i class="fas fa-chart-line stats-icon"></i>
-            <span class="stats-text">总记录: {{ totalCount || Number }}</span>
-            <small class="stats-loaded">已加载 {{ Number }}</small>
-          </span>
-          <div class="actions">
-            <el-dropdown @command="switchFileType" :hide-on-click="false">
-              <span class="el-dropdown-link"><i :class="fileTypeIcon"></i></span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="all" :class="{ 'el-dropdown-menu__item--selected': fileType === 'all' }"><i class="fas fa-th-large"></i> 全部</el-dropdown-item>
-                <el-dropdown-item command="image" :class="{ 'el-dropdown-menu__item--selected': fileType === 'image' }"><i :class="fileConfig.image.icon"></i> 图片</el-dropdown-item>
-                <el-dropdown-item command="video" :class="{ 'el-dropdown-menu__item--selected': fileType === 'video' }"><i :class="fileConfig.video.icon"></i> 视频</el-dropdown-item>
-                <el-dropdown-item command="audio" :class="{ 'el-dropdown-menu__item--selected': fileType === 'audio' }"><i :class="fileConfig.audio.icon"></i> 音频</el-dropdown-item>
-                <el-dropdown-item command="document" :class="{ 'el-dropdown-menu__item--selected': fileType === 'document' }"><i :class="fileConfig.document.icon"></i> 文件</el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <el-dropdown @command="switchStorageFilter" :hide-on-click="false">
-              <span class="el-dropdown-link"><i :class="storageFilterIcon"></i></span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="all" :class="{ 'el-dropdown-menu__item--selected': storageFilter === 'all' }"><i class="fas fa-database"></i> 全部存储</el-dropdown-item>
-                <el-dropdown-item command="telegram" :class="{ 'el-dropdown-menu__item--selected': storageFilter === 'telegram' }"><i class="fab fa-telegram"></i> Telegram</el-dropdown-item>
-                <el-dropdown-item command="r2" :class="{ 'el-dropdown-menu__item--selected': storageFilter === 'r2' }"><i class="fas fa-cloud"></i> R2 存储</el-dropdown-item>
-                <el-dropdown-item command="s3" :class="{ 'el-dropdown-menu__item--selected': storageFilter === 's3' }"><i class="fas fa-database"></i> S3 存储</el-dropdown-item>
-                <el-dropdown-item command="discord" :class="{ 'el-dropdown-menu__item--selected': storageFilter === 'discord' }"><i class="fab fa-discord"></i> Discord</el-dropdown-item>
-                <el-dropdown-item command="huggingface" :class="{ 'el-dropdown-menu__item--selected': storageFilter === 'huggingface' }"><i class="fas fa-robot"></i> HuggingFace</el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <el-dropdown @command="sort" :hide-on-click="false">
-              <span class="el-dropdown-link"><i :class="sortIcon"></i></span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="dateDesc" :class="{ 'el-dropdown-menu__item--selected': sortOption === 'dateDesc' }"><i class="fas fa-sort-amount-down"></i> 按时间倒序</el-dropdown-item>
-                <el-dropdown-item command="nameAsc" :class="{ 'el-dropdown-menu__item--selected': sortOption === 'nameAsc' }"><i class="fas fa-sort-alpha-up"></i> 按名称升序</el-dropdown-item>
-                <el-dropdown-item command="sizeDesc" :class="{ 'el-dropdown-menu__item--selected': sortOption === 'sizeDesc' }"><i class="fas fa-sort-amount-down"></i> 按大小倒序</el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <el-dropdown @command="filter" :hide-on-click="false">
-              <span class="el-dropdown-link"><i :class="filterIcon"></i></span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="all" :class="{ 'el-dropdown-menu__item--selected': filterOption === 'all' }"><i class="fas fa-filter"></i> 全部</el-dropdown-item>
-                <el-dropdown-item command="favorites" :class="{ 'el-dropdown-menu__item--selected': filterOption === 'favorites' }"><i class="fas fa-bookmark"></i> 收藏</el-dropdown-item>
-                <el-dropdown-item command="blocked" :class="{ 'el-dropdown-menu__item--selected': filterOption === 'blocked' }"><i class="fas fa-lock"></i> 黑名单</el-dropdown-item>
-                <el-dropdown-item command="unblocked" :class="{ 'el-dropdown-menu__item--selected': filterOption === 'unblocked' }"><i class="fas fa-unlock"></i> 白名单</el-dropdown-item>
-                <el-dropdown-item command="adult" :class="{ 'el-dropdown-menu__item--selected': filterOption === 'adult' }"><i class="fas fa-user-secret"></i> NSFW</el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <el-dropdown @command="handleBatchOperation" :hide-on-click="false">
-              <span class="el-dropdown-link"><i class="fas fa-tasks"></i></span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="selectAll"><i class="fas fa-check-double"></i> {{ isAllSelected ? '取消全选' : '全选当前页' }}</el-dropdown-item>
-                <el-dropdown-item command="selectAllLoaded"><i class="fas fa-check-square"></i> 全选已加载 ({{ tableData.length }})</el-dropdown-item>
-                <el-dropdown-item divided command="copy" :class="{ disabled: selectedFiles.length === 0 }"><i class="fas fa-link"></i> 批量复制</el-dropdown-item>
-                <el-dropdown-item command="copyMarkdown" :class="{ disabled: selectedFiles.length === 0 }"><i class="fab fa-markdown"></i> 复制Markdown</el-dropdown-item>
-                <el-dropdown-item command="copyHtml" :class="{ disabled: selectedFiles.length === 0 }"><i class="fas fa-code"></i> 复制HTML</el-dropdown-item>
-                <el-dropdown-item command="delete" :class="{ disabled: selectedFiles.length === 0 }"><i class="fas fa-trash-alt"></i> 批量删除</el-dropdown-item>
-                <el-dropdown-item command="download" :class="{ disabled: selectedFiles.length === 0 }"><i class="fas fa-download"></i> 批量下载</el-dropdown-item>
-                <el-dropdown-item command="block" :class="{ disabled: selectedFiles.length === 0 }"><i class="fas fa-lock"></i> 加入黑名单</el-dropdown-item>
-                <el-dropdown-item command="unblock" :class="{ disabled: selectedFiles.length === 0 }"><i class="fas fa-unlock"></i> 加入白名单</el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <el-dropdown @command="handleWebsite">
-              <span class="el-dropdown-link"><i class="fas fa-external-link-alt"></i></span>
-              <el-dropdown-menu slot="dropdown">
-                <template v-for="site in quickWebsites">
-                  <el-dropdown-item :command="site.url">
-                    <i :class="site.icon"></i> {{ site.name }}
-                  </el-dropdown-item>
-                </template>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <el-dropdown @command="handleToolkit" :hide-on-click="false">
-              <span class="el-dropdown-link"><i class="fas fa-toolbox"></i></span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="selectAllInPage"><i class="fas fa-check-square"></i> 全选当前页</el-dropdown-item>
-                <el-dropdown-item command="checkBrokenFiles"><i class="fas fa-wrench"></i> 检测失效文件</el-dropdown-item>
-                <el-dropdown-item command="editWebsites"><i class="fas fa-edit"></i> 编辑快捷方式</el-dropdown-item>
-                <el-dropdown-item command="openUploader"><i class="fas fa-cloud-upload-alt"></i> 打开上传中心</el-dropdown-item>
-                <el-dropdown-item command="exportLinks"><i class="fas fa-file-export"></i> 导出全部链接</el-dropdown-item>
-                <el-dropdown-item command="checkStatus" divided><i class="fas fa-heartbeat"></i> 检查连接状态</el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <div class="status-panel" @click="checkConnectionStatus">
-              <div class="status-item">
-                <i class="fas fa-circle" :style="{ color: systemStatus.telegram.connected ? '#67c23a' : '#f56c6c' }"></i>
-                <span>TG</span>
-              </div>
-              <div class="status-item">
-                <i class="fas fa-circle" :style="{ color: systemStatus.kv.connected ? '#67c23a' : '#f56c6c' }"></i>
-                <span>KV</span>
-              </div>
-              <div class="status-item">
-                <i class="fas fa-circle" :style="{ color: systemStatus.r2.connected ? '#67c23a' : (systemStatus.r2.message === '未配置' ? '#909399' : '#f56c6c') }"></i>
-                <span>R2</span>
-              </div>
-              <div class="status-item">
-                <i class="fas fa-circle" :style="{ color: systemStatus.s3.connected ? '#67c23a' : (systemStatus.s3.message === '未配置' ? '#909399' : '#f56c6c') }"></i>
-                <span>S3</span>
-              </div>
-              <div class="status-item">
-                <i class="fas fa-circle" :style="{ color: systemStatus.discord.connected ? '#67c23a' : (systemStatus.discord.message === '未配置' ? '#909399' : '#f56c6c') }"></i>
-                <span>DC</span>
-              </div>
-              <div class="status-item">
-                <i class="fas fa-circle" :style="{ color: systemStatus.huggingface.connected ? '#67c23a' : (systemStatus.huggingface.message === '未配置' ? '#909399' : '#f56c6c') }"></i>
-                <span>HF</span>
-              </div>
-            </div>
-            <el-dropdown @command="handleLoadSettings" :hide-on-click="false">
-              <span class="el-dropdown-link"><i class="fas fa-cog"></i></span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="normal" :class="{ 'el-dropdown-menu__item--selected': loadMode === 'normal' }"><i class="fas fa-eye"></i> 正常模式</el-dropdown-item>
-                <el-dropdown-item command="dataSaver" :class="{ 'el-dropdown-menu__item--selected': loadMode === 'dataSaver' }"><i class="fas fa-bolt"></i> 省流模式</el-dropdown-item>
-                <el-dropdown-item command="noImage" :class="{ 'el-dropdown-menu__item--selected': loadMode === 'noImage' }"><i class="fas fa-eye-slash"></i> 无图模式</el-dropdown-item>
-                <el-dropdown-item command="safeMode" divided :class="{ 'el-dropdown-menu__item--selected': safeMode }"><i class="fas fa-shield-alt"></i> {{ safeMode ? '✓' : '' }} 安全模式(NSFW)</el-dropdown-item>
-                <el-dropdown-item command="loginBackground" divided><i class="fas fa-image"></i> 登录页背景设置</el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-            <i class="fas fa-sign-out-alt" @click="handleLogout"></i>
+  <main class="page">
+    <header class="header">
+      <h1 class="header-title">
+        <i class="fas fa-folder-tree"></i>
+        <span>Admin Console</span>
+      </h1>
+      <div class="header-actions">
+        <a class="action-link" href="./"><i class="fas fa-home"></i><span>Upload</span></a>
+        <a class="action-link" href="./gallery.html"><i class="fas fa-images"></i><span>Gallery</span></a>
+        <a class="action-link" href="./webdav.html"><i class="fas fa-hard-drive"></i><span>WebDAV</span></a>
+        <a class="action-link" href="./admin.html"><i class="fas fa-th-large"></i><span>Admin</span></a>
+      </div>
+    </header>
+
+    <section class="explorer">
+      <aside class="folders">
+        <div class="folders-head">
+          <strong>Folders</strong>
+          <div class="folders-actions">
+            <button id="newFolderBtn" class="load-btn" type="button">New</button>
+            <button id="renameFolderBtn" class="load-btn" type="button">Rename</button>
+            <button id="deleteFolderBtn" class="load-btn" type="button">Delete</button>
           </div>
         </div>
-      </el-header>
-      <el-main class="main-container">
-        <div class="content">
-          <template v-for="(item, index) in paginatedTableData" :key="index">
-            <!-- 图片 - 根据实际文件类型渲染 -->
-            <template v-if="getActualFileType(item.name) === 'image'">
-              <el-card class="image-card">
-                <span class="collect-icon" @click.stop="toggleLike(index, item.name)">
-                <i :class="item.metadata.liked ? 'fa-solid fa-bookmark liked' : 'fa-regular fa-bookmark not-liked'"></i>
-                </span>
-                <el-checkbox v-model="item.selected" :ref="'checkbox-' + index"></el-checkbox>
-                <el-image :src="'/file/' + item.name" :preview-src-list="['/file/' + item.name]" fit="cover" lazy="true"></el-image>
-                <div class="image-overlay">
-                  <div class="overlay-buttons">
-                    <el-dropdown @command="(cmd) => handleQuickCopy(cmd, item.name)" trigger="click" size="mini">
-                      <el-button size="mini" type="primary" @click.stop>复制 <i class="el-icon-arrow-down"></i></el-button>
-                      <el-dropdown-menu slot="dropdown">
-                        <el-dropdown-item command="url">直链 URL</el-dropdown-item>
-                        <el-dropdown-item command="markdown">Markdown</el-dropdown-item>
-                        <el-dropdown-item command="html">HTML</el-dropdown-item>
-                        <el-dropdown-item command="bbcode">BBCode</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </el-dropdown>
-                    <el-button size="mini" type="info" @click.stop="handleEditName(item)">编辑</el-button>
-                    <el-button size="mini" type="danger" @click.stop="handleDelete(index, item.name)">删除</el-button>
-                  </div>
-              </div>
-              <div class="card-footer">
-                <el-popover
-                  trigger="click"
-                  placement="top"
-                  popper-class="custom-popover">
-                  <template #default>
-                    <p v-html="formattedFileDetails(item)"></p>
-                  </template>
-                  <template #reference>
-                    <span :style="{ color: item.metadata.ListType !== 'Block' ? '#fff' : '#aaa' }">
-                      {{ item.metadata.fileName || item.name }}
-                    </span>
-                  </template>
-                </el-popover>
-              </div>
-              </el-card>
-            </template>
-            <!-- 视频 - 根据实际文件类型渲染 -->
-            <template v-else-if="getActualFileType(item.name) === 'video'">
-              <el-card class="video-card" :class="{ 'selected': item.selected }">
-                <div class="video-content">
-                  <video :src="'/file/' + item.name" controls style="width: 100%; height: 100%; object-fit: cover;"></video>
-                  <div class="video-title">
-                    <el-popover
-                      trigger="click"
-                      placement="top"
-                      popper-class="custom-popover">
-                      <template #default>
-                        <p v-html="formattedFileDetails(item)"></p>
-                      </template>
-                      <template #reference>
-                        <span :style="{ color: item.metadata.ListType !== 'Block' ? '#fff' : '#aaa' }">{{ item.metadata.fileName || item.name }}</span>
-                      </template>
-                    </el-popover>
-                  </div>
-                    <!-- 控制按钮区域 -->
-                  <div class="video-controls">
-                    <button class="control-btn like-btn" @click.stop="toggleLike(index, item.name)"><i :class="item.metadata.liked ? 'fas fa-heart liked' : 'far fa-heart'"></i></button>
-                    <button class="control-btn edit-btn" @click.stop="handleEditName(item)"><i class="fas fa-edit"></i></button>
-                    <button class="control-btn select-btn" @click.stop="toggleSelect(index, item.name)"><i :class="item.selected ? 'fas fa-square-check selected' : 'far fa-square'"></i></button>
-                    <button class="control-btn" @click.stop="openPreview(item)" title="预览"><i class="fas fa-eye"></i></button>
-                    <button class="control-btn" @click.stop="handleCopy(index, item.name)"><i class="fas fa-link"></i></button>
-                    <button class="control-btn" @click.stop="handleDelete(index, item.name)"><i class="fas fa-trash-alt"></i></button>
-                  </div>
-                </div>
-              </el-card>
-            </template>
-            <!-- 音频 - 根据实际文件类型渲染 -->
-            <template v-else-if="getActualFileType(item.name) === 'audio'">
-              <el-card class="audio-card" :class="{ 'selected': item.selected }">
-                <div class="audio-content">
-                  <!-- 音频标题区域 -->
-                  <div class="audio-header">
-                    <div class="audio-avatar">
-                      <img src="./music.svg" alt="Music">
-                    </div>
-                    <div class="audio-info">
-                      <div class="audio-title">
-                        <el-popover
-                          trigger="click"
-                          placement="top"
-                          popper-class="custom-popover">
-                          <template #default>
-                            <p v-html="formattedFileDetails(item)"></p>
-                          </template>
-                          <template #reference>
-                            <span :style="{ color: item.metadata.ListType !== 'Block' ? '#fff' : '#aaa' }">{{ item.metadata.fileName || item.name }}</span>
-                          </template>
-                        </el-popover>
-                      </div>
-                      <div class="audio-subtitle">{{ getFileType(item.name) }}</div>
-                    </div>
-                  </div>
-                  <audio
-                    class="custom-audio-player"
-                    :src="'/file/' + item.name"
-                    controls
-                    preload="metadata">
-                    当前浏览器不支持音频播放
-                  </audio>
-                  <!-- 控制按钮区域 -->
-                  <div class="audio-controls">
-                    <button class="control-btn like-btn" @click.stop="toggleLike(index, item.name)"><i :class="item.metadata.liked ? 'fas fa-heart liked' : 'far fa-heart'"></i></button>
-                    <button class="control-btn edit-btn" @click.stop="handleEditName(item)"><i class="fas fa-edit"></i></button>
-                    <button class="control-btn select-btn" @click.stop="toggleSelect(index, item.name)"><i :class="item.selected ? 'fas fa-square-check selected' : 'far fa-square'"></i></button>
-                    <button class="control-btn" @click.stop="openPreview(item)" title="预览"><i class="fas fa-eye"></i></button>
-                    <button class="control-btn" @click.stop="handleCopy(index, item.name)"><i class="fas fa-copy"></i></button>
-                    <button class="control-btn" @click.stop="handleDelete(index, item.name)"><i class="fas fa-trash-alt"></i></button>
-                  </div>
-                </div>
-              </el-card>
-            </template>
-            <!-- 其他文件（文档等） - 默认渲染 -->
-            <template v-else>
-              <el-card class="file-card" :class="{ 'selected': item.selected }">
-                <div class="file-content">
-                  <!-- 文件标题区域 -->
-                  <div class="file-header">
-                    <div class="file-avatar">
-                      <i :class="getFileIcon(item.name)" style="font-size: 32px;"></i>
-                    </div>
-                    <div class="file-info">
-                      <div class="file-title">
-                        <el-popover
-                          trigger="click"
-                          placement="top"
-                          popper-class="custom-popover">
-                          <template #default>
-                            <p v-html="formattedFileDetails(item)"></p>
-                          </template>
-                          <template #reference>
-                            <span :style="{ color: item.metadata.ListType !== 'Block' ? '#fff' : '#aaa' }">{{ item.metadata.fileName || item.name }}</span>
-                          </template>
-                        </el-popover>
-                      </div>
-                      <div class="file-subtitle">{{ getFileType(item.name) }}</div>
-                    </div>
-                  </div>
-                  <!-- 控制按钮区域 -->
-                  <div class="file-controls">
-                    <button class="control-btn like-btn" @click.stop="toggleLike(index, item.name)"><i :class="item.metadata.liked ? 'fas fa-heart liked' : 'far fa-heart'"></i></button>
-                    <button class="control-btn edit-btn" @click.stop="handleEditName(item)"><i class="fas fa-edit"></i></button>
-                    <button class="control-btn select-btn" @click.stop="toggleSelect(index, item.name)"><i :class="item.selected ? 'fas fa-square-check selected' : 'far fa-square'"></i></button>
-                    <button class="control-btn" @click.stop="openPreview(item)" title="预览"><i class="fas fa-eye"></i></button>
-                    <button class="control-btn" @click.stop="handleCopy(index, item.name)"><i class="fas fa-copy"></i></button>
-                    <button class="control-btn" @click.stop="handleDelete(index, item.name)"><i class="fas fa-trash-alt"></i></button>
-                  </div>
-                </div>
-              </el-card>
-            </template>
-          </template>
-        </div>
-  <div class="pagination-container">
-    <el-pagination
-      background layout="prev, pager, next"
-      :total="filteredTableData.length" :page-size="pageSize"
-      @current-change="handlePageChange" :current-page.sync="currentPage" />
-  </div>
-  <div style="text-align:center;margin-top:16px;">
-    <el-button v-if="nextCursor" :loading="isLoadingMore" :disabled="isLoadingMore" @click="loadMore">
-      {{ isLoadingMore ? '加载中...' : ('加载更多 (' + Number + '/' + (totalCount || Number) + ')') }}
-    </el-button>
-    <div v-else-if="(totalCount || Number) > 0 && Number >= (totalCount || Number)" class="load-more-end">
-      全部加载完成，共 {{ totalCount || Number }} 条
-    </div>
-  </div>
-  <el-footer class="footer">
-          <div>Powered By K-Vault</div>
-          <a href="https://github.com/katelya77/K-Vault" target="_blank" rel="noopener noreferrer">
-            <div><i class="fa-brands fa-github"></i> K-Vault</div>
-          </a>
-        </el-footer>
-      </el-main>
-    </el-container>
-    <!-- 预览弹窗 - 模态框模式（不跳转新标签页） -->
-    <div class="preview-modal" v-if="previewData" @click="closePreview">
-      <button class="preview-close" @click.stop="closePreview">
-        <i class="fas fa-times"></i>
-      </button>
-      <!-- 原生图片预览 -->
-      <img v-if="previewData.type === 'native-image'" :src="previewData.url" @click.stop>
-      <!-- iframe 预览（视频/音频/文档） -->
-      <div v-else-if="previewData.type === 'iframe'" class="iframe-container" @click.stop>
-        <iframe
-          ref="previewIframe"
-          :src="previewData.iframeUrl"
-          allow="clipboard-write; autoplay; fullscreen; encrypted-media"
-          allowfullscreen>
-        </iframe>
-      </div>
-      <!-- 底部操作栏 -->
-      <div class="preview-toolbar" @click.stop>
-        <span class="preview-filename">{{ previewData.fileName }}</span>
-        <div class="preview-btns">
-          <el-button size="small" type="primary" @click="copyPreviewLink"><i class="fas fa-copy"></i> 复制直链</el-button>
-          <el-button size="small" @click="downloadPreviewFile"><i class="fas fa-download"></i> 下载</el-button>
-        </div>
-      </div>
-    </div>
-    <!-- 底部悬浮批量操作栏 -->
-    <transition name="batch-float">
-      <div class="batch-toolbar"
-           v-if="selectedFiles.length > 0"
-           ref="batchToolbar"
-           @mousedown.stop="startBatchDrag"
-           :class="{ 'is-dragging': batchDragState.dragging }"
-           :style="batchToolbarStyle">
-        <span class="batch-count">已选 {{ selectedFiles.length }} 项</span>
-        <el-button-group size="mini" class="batch-actions">
-          <el-button class="batch-btn batch-btn-copy" icon="el-icon-document-copy" @click="handleBatchCopy">复制链接</el-button>
-          <el-button class="batch-btn batch-btn-delete" icon="el-icon-delete" @click="handleBatchDelete">删除</el-button>
-          <el-button class="batch-btn batch-btn-download" icon="el-icon-download" @click="handleBatchDownload">下载</el-button>
-        </el-button-group>
-        <el-button class="batch-btn batch-btn-cancel" icon="el-icon-close" @click="clearSelection">取消选择</el-button>
-        <span class="batch-shortcuts">快捷键：Ctrl/Cmd + C 复制 · D 下载 · Del 删除 · Esc 取消</span>
-      </div>
-    </transition>
-  </div>
-</body>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script> <!-- Vue -->
-<script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js"></script> <!-- ElementUI -->
-<script>
-  new Vue({
-    el: '#app',
-    data: {
-      baseURL: document.location.origin,
-      Number: 0,
-      totalCount: 0,
-      fileConfig: {
-        all: {
-          name: '全部',
-          exts: [],  // 空数组表示匹配所有
-          icon: 'fas fa-th-large',
-          count: 0
-        },
-        image: {
-          name: '图片',
-          exts: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'ico', 'svg', 'heic', 'heif', 'avif'],
-          icon: 'fas fa-image',
-          count: 0
-        },
-        video: {
-          name: '视频',
-          exts: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'm4v', '3gp', 'ts'],
-          icon: 'fas fa-video',
-          count: 0
-        },
-        audio: {
-          name: '音频',
-          exts: ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma', 'ape', 'opus'],
-          icon: 'fas fa-music',
-          count: 0
-        },
-        document: {
-          name: '文件',
-          exts: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'zip', 'rar', '7z', 'tar', 'gz', 'exe', 'apk', 'dmg', 'iso', 'msi', 'deb', 'rpm', 'json', 'xml', 'csv', 'sql', 'html', 'css', 'js', 'py', 'java', 'go', 'rs', 'cpp', 'c', 'h'],
-          icon: 'fas fa-folder-open',
-          count: 0
-        }
-      },
-      uploadConfig: {
-        maxSize: 20 * 1024 * 1024,  // 最大上传20MB
-        maxConcurrent: 3
-      },
-        tableData: [],
-        nextCursor: null,
-      isLoadingMore: false,
-      search: '',
-      currentPage: 1,
-      pageSize: 15,
-      selectedFiles: [],
-      sortOption: 'dateDesc',
-      filterOption: 'all',
-      fileType: 'all',
-      storageFilter: 'all', // all | telegram | r2
-      loadMode: 'normal', // normal | dataSaver | noImage
-      safeMode: true, // NSFW 安全模式
-      systemStatus: {
-        telegram: { connected: false, message: '检查中...' },
-        kv: { connected: false, message: '检查中...' },
-        r2: { connected: false, message: '检查中...', enabled: false },
-        s3: { connected: false, message: '检查中...', enabled: false },
-        discord: { connected: false, message: '检查中...', enabled: false },
-        huggingface: { connected: false, message: '检查中...', enabled: false },
-        auth: { enabled: false, message: '检查中...' }
-      },
-      batchToolbarPosition: {
-        left: null,
-        top: null
-      },
-      batchDragState: {
-        dragging: false,
-        offsetX: 0,
-        offsetY: 0
-      },
-      previewData: null,  // 模态框预览数据
-      quickWebsites: [
-        { name: '上传中心', url: './', icon: 'fas fa-cloud-upload-alt' },
-        { name: '图片浏览', url: './gallery.html', icon: 'fas fa-images' },
-        { name: 'Movavi', url: 'https://www.movavi.com/zh/movavi-video-converter.html', icon: 'fas fa-file-video' },
-        { name: 'FreeConvert', url: 'https://www.freeconvert.com/zh/video-compressor', icon: 'fas fa-file' },
-        { name: 'YouCompress', url: 'https://www.youcompress.com/zh-cn/', icon: 'fas fa-file-zipper' },
-        { name: 'Cloudinary', url: 'https://console.cloudinary.com/', icon: 'fas fa-cloud' },
-      ],
-    },
-    computed: {
-      filteredTableData() {
-        return this.tableData.filter(data => {
-          // 搜索匹配
-          const searchLower = this.search.toLowerCase();
-          const matchesSearch = !searchLower || [
-            (data.metadata.fileName || '').toLowerCase(),
-            data.name?.toLowerCase(),
-          ].some(field => field?.includes(searchLower));
+        <div id="folderTree" class="folder-tree"></div>
+      </aside>
 
-          // 筛选匹配
-          const matchesFilter = {
-            'all': true,
-            'favorites': data.metadata.liked,
-            'blocked': data.metadata.ListType === 'Block',
-            'unblocked': data.metadata.ListType === 'White',
-            'adult': data.metadata.Label?.toLowerCase() === 'adult',
-          }[this.filterOption] ?? true;
+      <article class="files">
+        <div class="files-toolbar">
+          <input id="searchInput" type="text" placeholder="Search by name or id" />
+          <select id="storageFilter">
+            <option value="all">All Storage</option>
+            <option value="telegram">Telegram</option>
+            <option value="r2">R2</option>
+            <option value="s3">S3</option>
+            <option value="discord">Discord</option>
+            <option value="huggingface">HuggingFace</option>
+            <option value="webdav">WebDAV</option>
+            <option value="github">GitHub</option>
+          </select>
+          <button id="refreshBtn" class="load-btn" type="button">Refresh</button>
+        </div>
+        <div class="files-toolbar">
+          <button id="moveSelectedBtn" class="load-btn" type="button" disabled>Move Selected</button>
+          <button id="copySelectedBtn" class="load-btn" type="button" disabled>Copy Links</button>
+          <button id="deleteSelectedBtn" class="load-btn" type="button" disabled>Delete Selected</button>
+        </div>
+        <div class="meta-row">
+          <span id="currentFolder">Current: /</span>
+          <span id="statsText">Files: 0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input id="selectAll" type="checkbox" /></th>
+                <th>Name</th>
+                <th>Storage</th>
+                <th>Size</th>
+                <th>Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="fileBody"></tbody>
+          </table>
+        </div>
+        <div class="load-wrap">
+          <span id="statusLine" class="status-line">Ready</span>
+          <button id="loadMoreBtn" class="load-btn" type="button" style="display: none">
+            <i class="fas fa-cloud-download-alt"></i>
+            <span>Load More</span>
+          </button>
+        </div>
+      </article>
+    </section>
+  </main>
 
-          // 文件类型匹配
-          const ext = data.name.split('.').pop().toLowerCase();
-          let matchesType = true;
-          
-          if (this.fileType === 'all') {
-            // 全部模式：显示所有文件
-            matchesType = true;
-          } else if (this.fileType === 'document') {
-            // 文档模式：排除图片、视频、音频
-            matchesType = !Object.keys(this.fileConfig).some(type =>
-              type !== 'document' && type !== 'all' && this.fileConfig[type].exts.includes(ext)
-            );
-          } else {
-            // 特定类型模式
-            matchesType = this.fileConfig[this.fileType].exts.includes(ext);
+  <script>
+    (function () {
+      "use strict";
+
+      var state = {
+        files: [],
+        folders: [],
+        cursor: null,
+        loading: false,
+        folderPath: "",
+        search: "",
+        storage: "all",
+        selected: new Set(),
+      };
+
+      var el = {
+        folderTree: document.getElementById("folderTree"),
+        fileBody: document.getElementById("fileBody"),
+        loadMoreBtn: document.getElementById("loadMoreBtn"),
+        statusLine: document.getElementById("statusLine"),
+        currentFolder: document.getElementById("currentFolder"),
+        statsText: document.getElementById("statsText"),
+        searchInput: document.getElementById("searchInput"),
+        storageFilter: document.getElementById("storageFilter"),
+        refreshBtn: document.getElementById("refreshBtn"),
+        newFolderBtn: document.getElementById("newFolderBtn"),
+        renameFolderBtn: document.getElementById("renameFolderBtn"),
+        deleteFolderBtn: document.getElementById("deleteFolderBtn"),
+        moveSelectedBtn: document.getElementById("moveSelectedBtn"),
+        copySelectedBtn: document.getElementById("copySelectedBtn"),
+        deleteSelectedBtn: document.getElementById("deleteSelectedBtn"),
+        selectAll: document.getElementById("selectAll"),
+      };
+
+      function normalizeFolderPath(value) {
+        var raw = String(value || "").replace(/\\/g, "/").trim();
+        if (!raw) return "";
+        var items = [];
+        raw.split("/").forEach(function (segment) {
+          var part = segment.trim();
+          if (!part || part === ".") return;
+          if (part === "..") {
+            items.pop();
+            return;
           }
-
-          // 存储类型匹配
-          const storagePrefix = data.name.startsWith('r2:') ? 'r2'
-            : data.name.startsWith('s3:') ? 's3'
-            : data.name.startsWith('discord:') ? 'discord'
-            : data.name.startsWith('hf:') ? 'huggingface'
-            : 'telegram';
-          const matchesStorage = this.storageFilter === 'all' || this.storageFilter === storagePrefix;
-
-          return matchesSearch && matchesFilter && matchesType && matchesStorage;
+          items.push(part);
         });
-      },
-      paginatedTableData() {
-        return this.sortData(this.filteredTableData)
-          .slice((this.currentPage - 1) * this.pageSize, this.currentPage * this.pageSize);
-      },
-      paginatedData() {
-        return this.paginatedTableData;
-      },
-      isAllSelected() {
-        return this.paginatedData.length > 0 && this.paginatedData.every(f => f.selected);
-      },
-      sortIcon() { return `fas fa-sort-${this.sortOption === 'dateDesc' ? 'amount-down' : 'alpha-up'}`; },
-      filterIcon() {
-        return this.filterOption === 'all' ? 'fas fa-filter' :
-        this.filterOption === 'favorites' ? 'fas fa-bookmark' :
-        this.filterOption === 'blocked' ? 'fas fa-lock' :
-        this.filterOption === 'unblocked' ? 'fas fa-unlock' :
-        this.filterOption === 'adult' ? 'fas fa-user-secret' : '';
-      },
-      fileTypeIcon() {
-        return this.fileType === 'all' ? 'fas fa-th-large' :
-        this.fileType === 'image' ? 'fas fa-image' :
-        this.fileType === 'video' ? 'fas fa-video' :
-        this.fileType === 'audio' ? 'fas fa-music' :
-        this.fileType === 'document' ? 'fas fa-folder-open' : 'fas fa-th-large';
-      },
-      storageFilterIcon() {
-        return this.storageFilter === 'all' ? 'fas fa-database' :
-        this.storageFilter === 'telegram' ? 'fab fa-telegram' :
-        this.storageFilter === 'r2' ? 'fas fa-cloud' :
-        this.storageFilter === 's3' ? 'fas fa-database' :
-        this.storageFilter === 'discord' ? 'fab fa-discord' :
-        this.storageFilter === 'huggingface' ? 'fas fa-robot' : 'fas fa-database';
-      },
-      batchToolbarStyle() {
-        if (this.batchToolbarPosition.left === null || this.batchToolbarPosition.top === null) {
-          return {};
-        }
-        return {
-          left: `${this.batchToolbarPosition.left}px`,
-          top: `${this.batchToolbarPosition.top}px`,
-          bottom: 'auto',
-          transform: 'translate(0, 0)'
-        };
+        return items.join("/");
       }
-    },
-    watch: {  // 监听数据变化
-      tableData: {
-        handler(newData) {
-          this.selectedFiles = newData.filter(file => file.selected);
-        },
-        deep: true
-      },
-      selectedFiles(newValue) {
-        if (newValue.length === 0) {
-          this.batchToolbarPosition.left = null;
-          this.batchToolbarPosition.top = null;
-          return;
-        }
-        if (this.batchToolbarPosition.left === null) {
-          this.$nextTick(() => this.snapBatchToolbarToBottom());
-        }
-      },
-      sortOption(newOption) { localStorage.setItem('sortOption', newOption); },
-      filterOption(newOption) { localStorage.setItem('filterOption', newOption); }
-    },
-    methods: {
-      goHome() { window.location.href = './'; },  // 返回首页
-      refreshDashboard() { location.reload(); },  // 刷新页面
-      clearSelection() {  // 取消全部选择
-        this.tableData.forEach(file => file.selected = false);
-      },
-      startBatchDrag(event) {
-        if (event.button !== 0) return;
-        const toolbar = this.$refs.batchToolbar;
-        if (!toolbar) return;
-        const rect = toolbar.getBoundingClientRect();
-        this.batchDragState.dragging = true;
-        this.batchDragState.offsetX = event.clientX - rect.left;
-        this.batchDragState.offsetY = event.clientY - rect.top;
-        this.batchToolbarPosition.left = rect.left;
-        this.batchToolbarPosition.top = rect.top;
-        document.addEventListener('mousemove', this.onBatchDrag);
-        document.addEventListener('mouseup', this.stopBatchDrag);
-      },
-      onBatchDrag(event) {
-        if (!this.batchDragState.dragging) return;
-        const toolbar = this.$refs.batchToolbar;
-        if (!toolbar) return;
-        const width = toolbar.offsetWidth;
-        const height = toolbar.offsetHeight;
-        const padding = 12;
-        let left = event.clientX - this.batchDragState.offsetX;
-        let top = event.clientY - this.batchDragState.offsetY;
-        left = Math.max(padding, Math.min(left, window.innerWidth - width - padding));
-        top = Math.max(padding, Math.min(top, window.innerHeight - height - padding));
-        this.batchToolbarPosition.left = left;
-        this.batchToolbarPosition.top = top;
-      },
-      stopBatchDrag() {
-        if (!this.batchDragState.dragging) return;
-        this.batchDragState.dragging = false;
-        document.removeEventListener('mousemove', this.onBatchDrag);
-        document.removeEventListener('mouseup', this.stopBatchDrag);
-        this.snapBatchToolbarToBottom();
-      },
-      snapBatchToolbarToBottom() {
-        const toolbar = this.$refs.batchToolbar;
-        if (!toolbar) return;
-        const padding = 12;
-        const bottomOffset = 24;
-        const width = toolbar.offsetWidth;
-        const height = toolbar.offsetHeight;
-        let left = this.batchToolbarPosition.left ?? (window.innerWidth - width) / 2;
-        left = Math.max(padding, Math.min(left, window.innerWidth - width - padding));
-        this.batchToolbarPosition.left = left;
-        this.batchToolbarPosition.top = window.innerHeight - height - bottomOffset;
-      },
-      handleGlobalKeydown(event) {
-        if (this.selectedFiles.length === 0) return;
-        const target = event.target;
-        const isInput = target && (
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable
-        );
-        if (isInput) return;
-        const key = event.key.toLowerCase();
-        if ((event.ctrlKey || event.metaKey) && key === 'c') {
-          event.preventDefault();
-          this.handleBatchCopy();
-          return;
-        }
-        if (key === 'd') {
-          event.preventDefault();
-          this.handleBatchDownload();
-          return;
-        }
-        if (key === 'delete' || key === 'backspace') {
-          event.preventDefault();
-          this.handleBatchDelete();
-          return;
-        }
-        if (key === 'escape') {
-          event.preventDefault();
-          if (this.previewData) {
-            this.closePreview();
-          } else {
-            this.clearSelection();
-          }
-        }
-      },
-      
-      // 获取文件的实际类型（用于模板条件渲染）
-      getActualFileType(fileName) {
-        const ext = fileName.split('.').pop().toLowerCase();
-        if (this.fileConfig.image.exts.includes(ext)) return 'image';
-        if (this.fileConfig.video.exts.includes(ext)) return 'video';
-        if (this.fileConfig.audio.exts.includes(ext)) return 'audio';
-        return 'document';  // 默认归类为文档
-      },
-      
-      // 打开预览 - 使用模态框（与首页保持一致，不跳转新标签页）
-      openPreview(item) {
-        const fileName = item.metadata?.fileName || item.name;
-        const fileUrl = `${this.baseURL}/file/${item.name}`;
-        const fileType = this.getActualFileType(item.name);
 
-        // 图片类型 - 原生图片 Lightbox
-        if (fileType === 'image') {
-          this.previewData = {
-            type: 'native-image',
-            url: fileUrl,
-            fileName: fileName,
-            fileKey: item.name
-          };
-          return;
-        }
+      function escapeHtml(text) {
+        return String(text || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
 
-        // 视频/音频/文档类型 - iframe 预览
-        const PREVIEW_SERVICE_BASE = 'https://www.katelya.eu.org';
-        const targetUrl = encodeURIComponent(fileUrl);
-        const targetTitle = encodeURIComponent(fileName);
-        const iframeSrc = `${PREVIEW_SERVICE_BASE}/preview?url=${targetUrl}&title=${targetTitle}&autoplay=1`;
+      function formatBytes(bytes) {
+        var n = Number(bytes || 0);
+        if (!Number.isFinite(n) || n <= 0) return "0 B";
+        var units = ["B", "KB", "MB", "GB", "TB"];
+        var i = 0;
+        while (n >= 1024 && i < units.length - 1) {
+          n /= 1024;
+          i += 1;
+        }
+        return n.toFixed(i === 0 ? 0 : 2) + " " + units[i];
+      }
 
-        this.previewData = {
-          type: 'iframe',
-          iframeUrl: iframeSrc,
-          url: fileUrl,
-          fileName: fileName,
-          fileKey: item.name
-        };
-      },
-      // 关闭预览弹窗
-      closePreview() {
-        if (this.$refs.previewIframe) {
-          this.$refs.previewIframe.src = 'about:blank';
-        }
-        this.previewData = null;
-      },
-      // 复制预览文件的直链
-      copyPreviewLink() {
-        if (!this.previewData) return;
-        const link = this.previewData.url;
-        const fallback = () => {
-          this.copyToClipboardFallback(link);
-          this.$message.success('直链已复制');
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(link)
-            .then(() => this.$message.success('直链已复制'))
-            .catch(() => fallback());
-        } else {
-          fallback();
-        }
-      },
-      // 下载预览中的文件
-      downloadPreviewFile() {
-        if (!this.previewData) return;
-        const a = document.createElement('a');
-        a.href = this.previewData.url;
-        a.download = this.previewData.fileName;
-        a.click();
-      },
-      
-      async handleLogout() {  // 退出登录
+      function formatTime(value) {
+        var n = Number(value || 0);
+        if (!Number.isFinite(n) || n <= 0) return "-";
         try {
-          const response = await fetch('./api/auth/logout', { method: 'POST', credentials: 'include' });
-          // 清除本地存储的认证信息
-          sessionStorage.clear();
-          localStorage.removeItem('storageMode');
-          
-          // 尝试清除浏览器缓存的 Basic Auth 凭证
-          // 通过发送一个带有错误凭证的请求来清除缓存
-          try {
-            await fetch('./api/manage/list', {
-              method: 'GET',
-              headers: { 'Authorization': 'Basic ' + btoa('logout:logout') },
-              credentials: 'include'
-            });
-          } catch (e) { /* 忽略错误 */ }
-          
-          this.$message.success('已退出登录');
-          // 跳转到登录页，禁止返回
-          setTimeout(() => {
-            window.location.replace('./login.html');
-          }, 500);
-        } catch (e) {
-          this.$message.error('退出失败，请重试');
+          return new Date(n).toLocaleString();
+        } catch (_) {
+          return "-";
         }
-      },
-      handlePageChange(page) { this.currentPage = page; },  // 切换页面
-      normalizeListItem(file) {
-        return {
-          ...file,
-          selected: false,
-          metadata: {
-            ...file.metadata,
-            liked: file.metadata?.liked ?? false,
-            fileName: file.metadata?.fileName ?? file.name,
-            fileSize: file.metadata?.fileSize ?? 0,
-          },
-        };
-      },
-      mergeListData(files) {
-        const map = new Map(this.tableData.map((item) => [item.name, item]));
-        files.forEach((item) => {
-          if (!item || !item.name) return;
-          const prev = map.get(item.name);
-          map.set(item.name, prev ? { ...prev, ...item, selected: prev.selected || item.selected } : item);
-        });
-        this.tableData = Array.from(map.values());
-      },
-      sort(command) { this.sortOption = command; },  // 切换排序方式
-      filter(command) { this.filterOption = command; },  // 切换筛选方式
-      switchStorageFilter(command) { this.storageFilter = command; this.currentPage = 1; },  // 切换存储类型筛选
-      async loadMore() {
-        if (this.isLoadingMore || !this.nextCursor) return;
-        this.isLoadingMore = true;
-        try {
-          const result = await fetch(`./api/manage/list?cursor=${encodeURIComponent(this.nextCursor)}`, {
-            method: 'GET',
-            credentials: 'include',
-          }).then((r) => r.json());
+      }
 
-          const mapped = (result.keys || []).map((file) => this.normalizeListItem(file));
-          this.mergeListData(mapped);
-          this.nextCursor = result.list_complete ? null : result.cursor;
-          if (Number.isFinite(result?.stats?.total)) {
-            this.totalCount = result.stats.total;
-          }
-          this.updateStats();
-        } catch {
-          this.$message.error('加载更多失败，请稍后重试');
-        } finally {
-          this.isLoadingMore = false;
-        }
-      },
-        sortData(data) {
-          return this.sortOption === 'nameAsc' ? data.sort((a, b) => a.name.localeCompare(b.name)) :
-            this.sortOption === 'sizeDesc' ? data.sort((a, b) => b.metadata.fileSize - a.metadata.fileSize) :
-            data.sort((a, b) => b.metadata.TimeStamp - a.metadata.TimeStamp);
-      },
-      formattedFileDetails(item) {
-        const metadata = item.metadata;
-        const timestamp = new Date(metadata.TimeStamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-        const storageType = item.name.startsWith('r2:') ? 'R2 存储'
-          : item.name.startsWith('s3:') ? 'S3 存储'
-          : item.name.startsWith('discord:') ? 'Discord'
-          : item.name.startsWith('hf:') ? 'HuggingFace'
-          : 'Telegram';
-        const storageColor = item.name.startsWith('r2:') ? '#409eff'
-          : item.name.startsWith('s3:') ? '#e6a23c'
-          : item.name.startsWith('discord:') ? '#7289da'
-          : item.name.startsWith('hf:') ? '#ff9d00'
-          : '#67c23a';
-        const fileSize = metadata.fileSize ? this.formatFileSize(metadata.fileSize) : '未知';
-        return `
-          <div style="text-align: left; padding: 5px;">
-            <div><strong>ID：</strong>${item.name}</div>
-            <div><strong>文件名：</strong>${metadata.fileName || item.name}</div>
-            <div><strong>文件大小：</strong>${fileSize}</div>
-            <div><strong>存储位置：</strong><span style="color: ${storageColor}; font-weight: bold;">${storageType}</span></div>
-            <div><strong>上传时间：</strong>${timestamp}</div>
-            <div><strong>状态：</strong>${metadata.ListType || 'None'}</div>
-          </div>
-        `;
-      },
-      formatFileSize(bytes) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-      },
-      calculatePageSize() {  // 设置页面大小
-        const config = {
-          minSize: 15, // 最小页面卡片数
-          cardWidth: 240,
-          ratio: 3/4, // 卡片高宽比
-          gap: 20, // 卡片间距
-          defaultWidth: 800,
-          defaultHeaderHeight: 60 // 默认Dashboard高度
-        };
-        // 获取容器尺寸
-        const content = document.querySelector('.content');
-        const header = document.querySelector('.header-content');
-        const width = content?.clientWidth || config.defaultWidth;
-        const height = window.innerHeight - (header?.offsetHeight || config.defaultHeaderHeight);
-        // 计算行列数
-        const cols = Math.floor(width / (config.cardWidth + config.gap));
-        const cardHeight = (width / cols - config.gap) * config.ratio;
-        const rows = Math.floor(height / (cardHeight + config.gap));
-        // 设置页面大小
-        this.pageSize = Math.max(rows * cols, config.minSize);
-      },
-      updateWindowWidth() {  // 动态调整页面大小
-        this.windowWidth = window.innerWidth;
-        this.calculatePageSize();
-      },
-      handleWindowResize() {
-        this.updateWindowWidth();
-        if (this.selectedFiles.length > 0) {
-          this.$nextTick(() => this.snapBatchToolbarToBottom());
-        }
-      },
-      updateStats() {
-        this.Number = this.tableData.length;
-        if (!Number.isFinite(this.totalCount) || this.totalCount < this.Number) {
-          this.totalCount = this.Number;
-        }
-        let fileCount = {image: 0, video: 0, audio: 0, document: 0};
-        this.tableData.forEach(file => {
-          const ext = file.name.split('.').pop().toLowerCase();
-          const type = Object.keys(this.fileConfig).find(t =>
-            this.fileConfig[t].exts.includes(ext)
-          ) || 'document';
-          fileCount[type]++;
-        });
-        ['image', 'video', 'audio', 'document'].forEach((type) => {
-          this.fileConfig[type].count = fileCount[type] || 0;
-        });
-      },
-      // 文件操作
-      async uploadFiles(event) {
-        const files = Array.from(event.target.files || []);
-        if (!files.length) return;
-        // 文件验证配置
-        // telegram-bot可分发的最大文件大小（20MB）
-        // 大于20MB虽然能够成功上传，但无法获取文件链接
-        const config = this.uploadConfig;
-        // 过滤有效文件
-        const valid = [], invalid = [];
-        files.forEach(file => {
-          (file.size <= config.maxSize ? valid : invalid).push(file);
-        });
-        // 显示错误信息
-        if(invalid.length) { this.$message.error(`文件超过${config.maxSize/1024/1024}MB: \n${invalid.map(f => f.name).join('\n')}`); }
-        if(!valid.length) { this.$message.info('没有符合条件的文件'); event.target.value = ''; return; }
+      function setStatus(message, isError) {
+        el.statusLine.textContent = message;
+        el.statusLine.style.color = isError ? "#ef4444" : "";
+      }
 
-        try {
-          const storageTarget = this.systemStatus.r2.connected && this.systemStatus.r2.enabled 
-            ? 'R2 存储桶' 
-            : 'Telegram 频道';
-          await this.$confirm(
-            `确定要上传这 ${valid.length} 个文件到 <b>${storageTarget}</b> 吗?`, 
-            '上传确认', 
-            {
-              type: 'info',
-              dangerouslyUseHTMLString: true,
-              confirmButtonText: '开始上传',
-              cancelButtonText: '取消'
-            }
-          );
-          const loading = this.$message({ message: `正在上传到 ${storageTarget}...`, duration: 0 });
-          let [successCount, failed] = [0, []];
-          // 并发上传处理函数
-          const upload = async file => {
-            try {
-              const formData = new FormData();
-              formData.append('file', file);
-              const res = await fetch(`${this.baseURL}/upload`, {
-                method: 'POST',
-                body: formData,
-                credentials: 'include'
-              });
-              const data = await res.json();
-              if (!res.ok || (Array.isArray(data) && data[0]?.error)) {
-                const serverError = Array.isArray(data)
-                  ? data[0]?.error
-                  : data?.error;
-                throw new Error(serverError || '上传失败');
-              }
-              const src = data[0]?.src;
-              if (!src) throw new Error('未返回文件路径');
-              // 验证并添加到列表
-              const preview = await fetch(`${this.baseURL}${src}`, {
-                credentials: 'include'
-              });
-              if (preview.ok) {
-                this.tableData.unshift({
-                  name: src.replace(/^\/file\//, ''),
-                  selected: false,
-                  metadata: { TimeStamp: Date.now(), fileSize: file.size, fileName: file.name }
-                });
-                successCount++;
-              }
-            } catch (err) {
-              failed.push(`${file.name} (${err.message})`);
-              console.error('Upload error:', err);
-            }
-          };
-          // 分批上传
-          for (let i = 0; i < valid.length; i += config.maxConcurrent) {
-            await Promise.all(
-              valid.slice(i, i + config.maxConcurrent).map(upload)
-            );
-          }
-          loading.close();
-          if (successCount) {
-            // 显示存储位置信息
-            const storageInfo = this.systemStatus.r2.connected && this.systemStatus.r2.enabled 
-              ? 'R2 存储桶' 
-              : 'Telegram 频道';
-            this.$message({
-              dangerouslyUseHTMLString: true,
-              message: `<i class="fas fa-check-circle" style="color:#67c23a;margin-right:8px;"></i>成功上传 <b>${successCount}</b> 个文件到 <b>${storageInfo}</b>`,
-              type: 'success',
-              duration: 3000
-            });
-          }
-          failed.length && this.$message.error(`上传失败: ${failed.join(', ')}`);
-          this.refreshFileList();
+      function updateMeta() {
+        el.currentFolder.textContent = "Current: /" + (state.folderPath || "");
+        el.statsText.textContent = "Files: " + state.files.length + " | Selected: " + state.selected.size;
+        var hasSelected = state.selected.size > 0;
+        el.moveSelectedBtn.disabled = !hasSelected;
+        el.copySelectedBtn.disabled = !hasSelected;
+        el.deleteSelectedBtn.disabled = !hasSelected;
+        el.selectAll.checked = state.files.length > 0 && state.selected.size === state.files.length;
+      }
 
-        } catch {
-          this.$message.info('已取消上传');
+      async function request(url, options) {
+        var response = await fetch(url, Object.assign({ credentials: "include" }, options || {}));
+        var data = await response.json().catch(function () { return null; });
+        if (!response.ok) {
+          var message = data && (data.error || data.message || data.errorDetail);
+          throw new Error(message || ("Request failed (" + response.status + ")"));
         }
-        event.target.value = '';
-      },
-      async refreshFileList() {  // 不刷新页面，仅更新数据
-        try {
-          const result = await fetch("./api/manage/list?limit=100&includeStats=1", { method: 'GET', credentials: 'include' })
-            .then(response => response.json());
-          const mapped = (result.keys || []).map((file) => this.normalizeListItem(file));
-          this.tableData = mapped;
-          this.nextCursor = result.list_complete ? null : result.cursor;
-          this.totalCount = Number.isFinite(result?.stats?.total) ? result.stats.total : mapped.length;
-          this.updateStats();
-          this.sortData(this.tableData);
-        } catch {
-          this.$message.error('刷新文件列表失败，请检查网络连接');
-        }
-      },
-      toggleSelect(index, name) {
-        const fileIndex = this.tableData.findIndex(file => file.name === name);
-        this.tableData[fileIndex].selected = !this.tableData[fileIndex].selected;
-      },
-      toggleLike(index, name) {
-        console.log(`Toggling like for : ${name}`);
-        const fileIndex = this.tableData.findIndex(file => file.name === name);
-        // 乐观更新收藏状态
-        this.tableData[fileIndex].metadata.liked = !(this.tableData[fileIndex].metadata.liked ?? false);
-        // 发送请求更新服务器数据
-        var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
-        fetch(`./api/manage/toggleLike/${name}`, requestOptions)
-          .then(response => response.json())
-          .then(result => {
-            if (!result.success) {  // 如果服务器更新失败，将状态还原
-              this.tableData[fileIndex].metadata.liked = !this.tableData[fileIndex].metadata.liked;
-              this.$message({message: '更新收藏状态失败，请稍后重试', type: 'error'});
-            } else {
-              this.$message.success(this.tableData[fileIndex].metadata.liked ? '收藏成功' : '取消收藏');
-            }
-          })
-          .catch(error => { // 如果服务器响应错误，将状态还原
-            this.tableData[fileIndex].metadata.liked = !this.tableData[fileIndex].metadata.liked;
-            this.$message({message: '同步服务器失败，请检查网络连接', type: 'error'});
-          });
-      },
-      handleDelete(index, key) {
-        const isR2 = key.startsWith('r2:');
-        const storageInfo = isR2 ? 'R2 存储和 KV 记录' : 'KV 记录';
-        this.$confirm(`此操作将永久删除该文件的 ${storageInfo}, 是否继续?`, '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          const encodedKey = encodeURIComponent(key);
-          fetch(`./api/manage/delete/${encodedKey}`, { method: 'GET', credentials: 'include' })
-            .then(response => {
-              if (!response.ok) throw new Error('删除失败');
-              return response.json();
-            })
-            .then(result => {
-              if (result.success) {
-                // 从本地数据中移除
-                const fileIndex = this.tableData.findIndex(f => f.name === key);
-                if (fileIndex !== -1) {
-                  this.tableData.splice(fileIndex, 1);
-                }
-                this.updateStats();
-                this.$message.success('删除成功！');
-              } else {
-                throw new Error(result.error || '删除失败');
-              }
-            })
-            .catch(err => this.$message.error('删除失败: ' + err.message));
-        }).catch(() => this.$message.info('已取消删除'));
-      },
-      copyToClipboardFallback(text) {
-        const textarea = document.createElement('textarea');
-        document.body.appendChild(textarea);
-        textarea.style.position = 'fixed';
-        textarea.style.clip = 'rect(0 0 0 0)';
-        textarea.style.top = '10px';
-        textarea.value = text;
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      },
-      handleCopy(index, key) {
-        const link = `${this.baseURL}/file/${key}`;
-        (navigator.clipboard?.writeText(link) || this.copyToClipboardFallback(link))
-          .then(() => this.$message.success('复制文件链接成功~'))
-          .catch(() => this.$message.error('自动复制失败，请手动复制链接：' + link));
-      },
-      handleQuickCopy(format, key) {  // 快速复制不同格式
-        const url = `${this.baseURL}/file/${key}`;
-        const file = this.tableData.find(f => f.name === key);
-        const name = file?.metadata?.fileName || key;
-        let link = url;
-        
-        switch (format) {
-          case 'markdown':
-            link = `![${name}](${url})`;
-            break;
-          case 'html':
-            link = `<img src="${url}" alt="${name}">`;
-            break;
-          case 'bbcode':
-            link = `[img]${url}[/img]`;
-            break;
-          default:
-            link = url;
-        }
-        
-        (navigator.clipboard?.writeText(link) || this.copyToClipboardFallback(link))
-          .then(() => this.$message.success(`${format.toUpperCase()} 格式链接已复制~`))
-          .catch(() => this.$message.error('复制失败'));
-      },
-      // 批处理相关
-      selectAllInPage() {  // 全选当前页
-        const selected = !this.paginatedTableData.every(file => file.selected);
-        this.paginatedTableData.forEach(file => file.selected = selected);
-      },
-      handleBatchDelete() {  // 批量删除
-        const r2Count = this.selectedFiles.filter(f => f.name.startsWith('r2:')).length;
-        const tgCount = this.selectedFiles.length - r2Count;
-        let msg = `此操作将永久删除这 ${this.selectedFiles.length} 个文件`;
-        if (r2Count > 0 && tgCount > 0) {
-          msg += ` (其中 ${r2Count} 个 R2 文件将完全删除, ${tgCount} 个 Telegram 文件仅删除 KV 记录)`;
-        } else if (r2Count > 0) {
-          msg += ` (将从 R2 存储和 KV 中完全删除)`;
-        }
-        msg += ', 是否继续?';
-        
-        this.$confirm(msg, '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          const promises = this.selectedFiles.map(file => {
-            const encodedKey = encodeURIComponent(file.name);
-            return fetch(`./api/manage/delete/${encodedKey}`, { method: 'GET', credentials: 'include' })
-              .then(r => r.json())
-              .then(result => ({ name: file.name, success: result.success }))
-              .catch(() => ({ name: file.name, success: false }));
-          });
+        return data;
+      }
 
-          Promise.all(promises)
-            .then(results => {
-              let successCount = 0;
-              let failedCount = 0;
-              results.forEach(result => {
-                if (result.success) {
-                  const fileIndex = this.tableData.findIndex(file => file.name === result.name);
-                  if (fileIndex !== -1) {
-                    this.tableData.splice(fileIndex, 1);
-                    successCount++;
-                  }
-                } else {
-                  failedCount++;
-                }
-              });
-              this.selectedFiles = [];
-              this.updateStats();
-              if (successCount > 0 && failedCount === 0) {
-                this.$message.success(`成功删除 ${successCount} 个文件!`);
-              } else if (successCount > 0 && failedCount > 0) {
-                this.$message.warning(`删除完成: ${successCount} 成功, ${failedCount} 失败`);
-              } else {
-                this.$message.error('删除失败');
-              }
-            })
-            .catch(() => this.$message.error('批量删除失败，请检查网络连接'));
-        }).catch(() => this.$message.info('已取消批量删除'));
-      },
-      handleBatchCopy() {  // 批量复制链接
-        const links = this.selectedFiles.map(file => `${document.location.origin}/file/${file.name}`).join('\n');
-        (navigator.clipboard?.writeText(links) || this.copyToClipboardFallback(links))
-          .then(() => this.$message.success('批量复制链接成功~'));
-      },
-      handleBatchCopyMarkdown() {  // 批量复制Markdown格式
-        const links = this.selectedFiles.map(file => {
-          const url = `${document.location.origin}/file/${file.name}`;
-          const name = file.metadata?.fileName || file.name;
-          return `![${name}](${url})`;
-        }).join('\n');
-        (navigator.clipboard?.writeText(links) || this.copyToClipboardFallback(links))
-          .then(() => this.$message.success('Markdown格式链接已复制~'));
-      },
-      handleBatchCopyHtml() {  // 批量复制HTML格式
-        const links = this.selectedFiles.map(file => {
-          const url = `${document.location.origin}/file/${file.name}`;
-          const name = file.metadata?.fileName || file.name;
-          return `<img src="${url}" alt="${name}">`;
-        }).join('\n');
-        (navigator.clipboard?.writeText(links) || this.copyToClipboardFallback(links))
-          .then(() => this.$message.success('HTML格式链接已复制~'));
-      },
-      handleBatchDownload() {  // 批量下载
-        this.$message.info(`正在下载 ${this.selectedFiles.length} 个文件`, { duration: 1000 });
-        this.selectedFiles.forEach((file, index) => {
-          setTimeout(() => {
-            const link = document.createElement('a');
-            link.href = `/file/${file.name}`;
-            link.download = file.metadata.fileName || file.name;
-            link.click();
-          }, index * 800);
-        });
-        this.selectedFiles = [];
-      },
-      handleBatchBlockOrUnblock(type) {  // 批量加入黑/白名单
-        if (type !== 'Block' && type !== 'White') { this.$message.error('无效的操作类型'); return; }
-        const typeToName = { Block: '黑名单', White: '白名单' };
-        this.$confirm(`确定要将这 ${this.selectedFiles.length} 个文件加入${typeToName[type]}吗?`, '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          const promises = this.selectedFiles.map(file => fetch(`./api/manage/${type.toLowerCase()}/${file.name}`, { method: 'GET', credentials: 'include' }));
-
-          Promise.all(promises)
-            .then(responses => {
-              responses.forEach((response, index) => {
-                if (response.ok) {
-                  const fileIndex = this.tableData.findIndex(item => item.name === this.selectedFiles[index].name);
-                  if (fileIndex !== -1) {
-                    this.tableData[fileIndex].metadata.ListType = type;
-                  }
-                }
-              });
-              this.$message.success(`批量加入${typeToName[type]}成功`);
-              this.selectedFiles = [];
-            })
-            .catch(() => this.$message.error(`操作失败，请检查网络连接`));
-        });
-      },
-      handleBatchOperation(command) {
-        // 全选操作不需要检查已选文件
-        if (command === 'selectAll') {
-          this.selectAllInPage();
-          return;
-        }
-        if (command === 'selectAllLoaded') {
-          this.selectAllLoaded();
-          return;
-        }
-        if (this.selectedFiles.length === 0) { this.$message.warning('请先选择文件'); return; }
-        switch (command) {
-          case 'copy': this.handleBatchCopy(); break;
-          case 'copyMarkdown': this.handleBatchCopyMarkdown(); break;
-          case 'copyHtml': this.handleBatchCopyHtml(); break;
-          case 'delete': this.handleBatchDelete(); break;
-          case 'download': this.handleBatchDownload(); break;
-          case 'block': this.handleBatchBlockOrUnblock('Block'); break;
-          case 'unblock': this.handleBatchBlockOrUnblock('White'); break;
-        }
-      },
-      // 全选当前页
-      selectAllInPage() {
-        const newState = !this.isAllSelected;
-        this.paginatedData.forEach(file => file.selected = newState);
-        this.$message.success(newState ? `已选中当前页 ${this.paginatedData.length} 项` : '已取消选择');
-      },
-      // 全选已加载的所有数据
-      selectAllLoaded() {
-        const allSelected = this.tableData.every(f => f.selected);
-        this.tableData.forEach(file => file.selected = !allSelected);
-        this.$message.success(!allSelected ? `已选中全部 ${this.tableData.length} 项` : '已取消选择');
-      },
-      // 工具相关
-      handleToolkit(command) {
-        switch (command) {
-          case 'selectAllInPage': this.selectAllInPage(); break;
-          case 'checkBrokenFiles': this.checkBrokenFiles(); break;
-          case 'editWebsites': this.editWebsites(); break;
-          case 'openUploader': this.openUploader(); break;
-          case 'exportLinks': this.exportAllLinks(); break;
-          case 'checkStatus': this.checkConnectionStatus(); break;
-        }
-      },
-      // 检查连接状态
-      async checkConnectionStatus() {
-        const loading = this.$message({ message: '正在检查连接状态...', duration: 0 });
-        try {
-          const response = await fetch('./api/status', { credentials: 'include' });
-          const status = await response.json();
-          this.systemStatus = status;
-          loading.close();
-          
-          // 显示详细状态对话框
-          const statusHtml = `
-            <div style="line-height: 2;">
-              <p><i class="fas fa-robot" style="width: 20px;"></i> <b>Telegram:</b> 
-                <span style="color: ${status.telegram.connected ? '#67c23a' : '#f56c6c'}">
-                  ${status.telegram.connected ? '✓' : '✗'} ${status.telegram.message}
-                </span>
-              </p>
-              <p><i class="fas fa-database" style="width: 20px;"></i> <b>KV 存储:</b> 
-                <span style="color: ${status.kv.connected ? '#67c23a' : '#f56c6c'}">
-                  ${status.kv.connected ? '✓' : '✗'} ${status.kv.message}
-                </span>
-              </p>
-              <p><i class="fas fa-cloud" style="width: 20px;"></i> <b>R2 存储:</b>
-                <span style="color: ${status.r2.connected ? '#67c23a' : (status.r2.message === '未配置' ? '#909399' : '#f56c6c')}">
-                  ${status.r2.connected ? '✓' : (status.r2.message === '未配置' ? '○' : '✗')} ${status.r2.message}
-                </span>
-              </p>
-              <p><i class="fas fa-database" style="width: 20px; color: #e6a23c;"></i> <b>S3 存储:</b>
-                <span style="color: ${status.s3?.connected ? '#67c23a' : (status.s3?.message === '未配置' ? '#909399' : '#f56c6c')}">
-                  ${status.s3?.connected ? '✓' : (status.s3?.message === '未配置' ? '○' : '✗')} ${status.s3?.message || '未知'}
-                </span>
-              </p>
-              <p><i class="fab fa-discord" style="width: 20px; color: #7289da;"></i> <b>Discord:</b>
-                <span style="color: ${status.discord?.connected ? '#67c23a' : (status.discord?.message === '未配置' ? '#909399' : '#f56c6c')}">
-                  ${status.discord?.connected ? '✓' : (status.discord?.message === '未配置' ? '○' : '✗')} ${status.discord?.message || '未知'}
-                </span>
-              </p>
-              <p><i class="fas fa-robot" style="width: 20px; color: #ff9d00;"></i> <b>HuggingFace:</b>
-                <span style="color: ${status.huggingface?.connected ? '#67c23a' : (status.huggingface?.message === '未配置' ? '#909399' : '#f56c6c')}">
-                  ${status.huggingface?.connected ? '✓' : (status.huggingface?.message === '未配置' ? '○' : '✗')} ${status.huggingface?.message || '未知'}
-                </span>
-              </p>
-              <p><i class="fas fa-lock" style="width: 20px;"></i> <b>身份验证:</b> 
-                <span style="color: ${status.auth.enabled ? '#67c23a' : '#909399'}">
-                  ${status.auth.enabled ? '✓' : '○'} ${status.auth.message}
-                </span>
-              </p>
-            </div>
-          `;
-          
-          this.$alert(statusHtml, '系统连接状态', {
-            dangerouslyUseHTMLString: true,
-            confirmButtonText: '确定'
-          });
-        } catch (error) {
-          loading.close();
-          this.$message.error('检查状态失败: ' + error.message);
-        }
-      },
-      openUploader() {  // 打开上传中心
-        window.open('./', '_blank');
-      },
-      exportAllLinks() {  // 导出全部链接
-        const loading = this.$message({ message: '正在生成链接列表...', duration: 0 });
-        const links = this.tableData.map(file => `${document.location.origin}/file/${file.name}`);
-        const linksText = links.join('\n');
-        
-        // 创建下载文件
-        const blob = new Blob([linksText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `image-links-${new Date().toISOString().slice(0,10)}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        loading.close();
-        this.$message.success(`已导出 ${links.length} 个链接`);
-      },
-      switchFileType(type, showMessage = true) {  // 切换文件类型
-        this.fileType = type;
-        this.currentPage = 1;
-        localStorage.setItem('fileType', type);
-        if (showMessage) {
-          this.$message({
-            message: `已切换为${this.fileConfig[type].name}模式, 共${this.fileConfig[type].count}个文件`,
-            type: 'success',
-            duration: 1500
-          });
-        }
-      },
-      checkBrokenFiles() {  // 检测失效文件
-        const loadingMessage = this.$message({ message: '正在检测失效文件...', duration: 0});
-
-        let brokenCount = 0;
-        const promises = this.tableData.map((item, index) => {
-          const fileIndex = this.tableData.findIndex(item => item.name === this.selectedFiles[index].name);
-          return new Promise((resolve) => {
-            fetch(`${this.baseURL}/file/${item.name}`, {
-              method: 'HEAD',
-              cache: 'no-cache'  // 避免缓存影响检测结果
-            })
-              .then(response => {
-                if (!response.ok) {
-                  brokenCount++;
-                  this.tableData[fileIndex].selected = true;
-                  resolve({ index, status: 'error' });
-                } else {
-                  resolve({ index, status: 'success' });
-                }
-              })
-              .catch(() => {
-                brokenCount++;
-                this.tableData[fileIndex].selected = true;
-                resolve({ index, status: 'error' });
-              });
-          });
-        });
-
-        Promise.all(promises).then(() => {
-          loadingMessage.close();
-          if (brokenCount > 0) {
-            this.$message({
-              dangerouslyUseHTMLString: true,
-              message: `检测到 ${brokenCount} 个失效文件，已自动选中。<br>您可以使用批量删除功能移除它们。`,
-              type: 'warning',
-              duration: 5000
-            });
-          } else {
-            this.$message({
-              message: '未检测到失效文件',
-              type: 'success'
-            });
-          }
-        });
-      },
-      // 处理网站点击
-      handleWebsite(url) { window.open(url, '_blank'); },
-      // 编辑快捷方式
-      editWebsites() {
-        const websiteText = this.quickWebsites
-          .map(site => `${site.name}|${site.url}|${site.icon}`)
-          .join('\n');
-
-        this.$prompt('', '编辑快捷方式', {
-          inputType: 'textarea',
-          inputValue: websiteText,
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          dangerouslyUseHTMLString: true,
-          customClass: 'website-edit-dialog',
-          message: `
-            <div>
-              每行一个网站，格式：名称|网址|图标类名<br>
-              图标需在 <a href="https://fontawesome.com/v6/search?m=free" target="_blank" style="color: #409EFF; text-decoration: underline">Font Awesome</a> 中选择
-            </div>
-          `,
-          inputValidator: (value) => {
-            const lines = value.split('\n');
-            if (lines.length > 10) return '不能超过10行';
-            for (let line of lines) {
-              if (!line.trim()) continue;
-              const [name, url, icon = 'fas fa-link'] = line.split('|');
-              if (!name || !url) return '名称和网址不能为空：' + line;
-              if (!(/^https?:\/\/.+/.test(url) || /^\.\/.*/.test(url))) return '网址格式错误：'+line;
-              if (!/^(fas?|fa-brands|fa-regular|fa-solid)\s+fa-[a-z0-9-]+$/.test(icon)) {
-                return '图标类名格式错误：' + line;
-              }
-            }
-            return true;
-          }
-        }).then(({ value }) => {
-          const newSites = value.split('\n')
-            .filter(line => line.trim())
-            .map(line => {
-              const [name, url, icon = 'fas fa-link'] = line.split('|');
-              return { name, url, icon };
-            });
-          this.quickWebsites = newSites;
-          localStorage.setItem('quickWebsites', JSON.stringify(newSites));
-          this.$message.success('保存成功');
-        }).catch(() => {});
-      },
-      getFileIcon(filename) {
-        const ext = filename.split('.').pop().toLowerCase();
-        const iconMap = {
-          'pdf': 'fas fa-file-pdf',
-          'doc,docx': 'fas fa-file-word',
-          'xls,xlsx,csv': 'fas fa-file-excel',
-          'ppt,pptx': 'fas fa-file-powerpoint',
-          'txt,md,log': 'fas fa-file-lines',
-          'zip,rar,7z,tar,gz': 'fas fa-file-zipper',
-          'html,htm,css,js,ts,jsx,tsx,vue,php,py,java,c,cpp,h,hpp,cs,go,rs,rb,pl,sh,sql': 'fas fa-file-code',
-          'json,xml,yaml,yml,toml': 'fas fa-file-code',
-          'mp4,avi,mov,wmv,flv,mkv,webm': 'fas fa-file-video',
-          'mp3,wav,ogg,flac,aac,m4a,wma': 'fas fa-file-audio',
-          'jpg,jpeg,png,gif,bmp,webp,svg,ico': 'fas fa-file-image',
-          'psd,ai,eps,cdr': 'fas fa-file-image',
-          'exe,msi,app,dmg,deb,rpm': 'fas fa-file-arrow-down'
-        };
-        for(const [exts, icon] of Object.entries(iconMap)) {
-          if(exts.split(',').includes(ext)) {
-            return icon;
-          }
-        }
-        return 'fas fa-file';
-      },
-      getFileType(filename) {
-        const ext = filename.split('.').pop();
-        return `${ext.toUpperCase()}`;
-      },
-      handleEditName(item) {
-        this.$prompt('', '修改文件名', {
-          inputValue: item.metadata?.fileName || item.name,
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          inputValidator: (value) => {
-            if (!value) return '文件名不能为空';
-            if (value.length > 64) return '文件名不能超过64个字符';
-            return true;
-          }
-        }).then(({ value }) => {
-          fetch(`./api/manage/editName/${item.name}?newName=${encodeURIComponent(value)}`, {
-            method: 'GET',
-            credentials: 'include'
-          })
-          .then(response => response.json())
-          .then(result => {
-            if (result.success) {
-              item.metadata.fileName = value;
-              this.$message.success('文件名修改成功');
-            } else {
-              this.$message.error('文件名修改失败');
-            }
-          })
-          .catch(() => this.$message.error('修改文件名时出错，请检查网络连接'));
-        }).catch(() => {});
-      },
-      // 加载设置处理
-      handleLoadSettings(command) {
-        if (command === 'safeMode') {
-          this.safeMode = !this.safeMode;
-          localStorage.setItem('safeMode', this.safeMode);
-          this.$message.success(this.safeMode ? '安全模式已开启' : '安全模式已关闭');
-        } else if (command === 'loginBackground') {
-          this.showLoginBackgroundSettings();
-        } else {
-          this.loadMode = command;
-          localStorage.setItem('loadMode', command);
-          const modeNames = { normal: '正常模式', dataSaver: '省流模式', noImage: '无图模式' };
-          this.$message.success(`已切换为${modeNames[command]}`);
-        }
-      },
-      // 登录页背景设置
-      showLoginBackgroundSettings() {
-        const currentBg = localStorage.getItem('loginBackgroundUrl') || '';
-        const currentMode = localStorage.getItem('loginBackgroundMode') || 'gradient';
-        
-        const html = `
-          <div style="line-height: 1.8;">
-            <p style="margin-bottom: 12px;"><b>选择背景模式：</b></p>
-            <div style="margin-bottom: 16px;">
-              <label style="display: block; margin: 8px 0; cursor: pointer;">
-                <input type="radio" name="bgMode" value="gradient" ${currentMode === 'gradient' ? 'checked' : ''}> 
-                <i class="fas fa-palette" style="margin: 0 8px;"></i>默认渐变色
-              </label>
-              <label style="display: block; margin: 8px 0; cursor: pointer;">
-                <input type="radio" name="bgMode" value="image" ${currentMode === 'image' ? 'checked' : ''}> 
-                <i class="fas fa-image" style="margin: 0 8px;"></i>自定义图片
-              </label>
-              <label style="display: block; margin: 8px 0; cursor: pointer;">
-                <input type="radio" name="bgMode" value="bing" ${currentMode === 'bing' ? 'checked' : ''}> 
-                <i class="fas fa-globe" style="margin: 0 8px;"></i>Bing 每日壁纸
-              </label>
-            </div>
-            <p style="margin-bottom: 8px;"><b>自定义图片 URL：</b></p>
-            <input type="text" id="bgUrlInput" value="${currentBg}" 
-              placeholder="输入图片链接，如 https://example.com/bg.jpg"
-              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px;">
-            <p style="color: #999; font-size: 12px;">
-              <i class="fas fa-info-circle"></i> 
-              提示：可以使用本站上传的图片链接，或者任意外部图片链接
-            </p>
-          </div>
-        `;
-        
-        this.$alert(html, '登录页背景设置', {
-          dangerouslyUseHTMLString: true,
-          showCancelButton: true,
-          confirmButtonText: '保存',
-          cancelButtonText: '取消',
-          beforeClose: (action, instance, done) => {
-            if (action === 'confirm') {
-              const mode = document.querySelector('input[name="bgMode"]:checked')?.value || 'gradient';
-              const url = document.getElementById('bgUrlInput')?.value?.trim() || '';
-              
-              localStorage.setItem('loginBackgroundMode', mode);
-              localStorage.setItem('loginBackgroundUrl', url);
-              
-              this.$message.success('背景设置已保存');
-            }
-            done();
-          }
-        });
-      },
-      // 根据加载模式获取图片显示状态
-      shouldShowImage(item) {
-        if (this.loadMode === 'noImage') return false;
-        if (this.loadMode === 'dataSaver') {
-          // 省流模式：跳过大于5MB的图片
-          const sizeLimit = 5 * 1024 * 1024;
-          return (item.metadata?.fileSize || 0) <= sizeLimit;
+      async function ensureAuth() {
+        var data = await request("./api/auth/check");
+        if (data.authRequired && !data.authenticated) {
+          var redirect = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = "./login.html?redirect=" + redirect;
+          return false;
         }
         return true;
-      },
-      // 检查是否为NSFW内容
-      isNsfwContent(item) {
-        return this.safeMode && item.metadata?.Label?.toLowerCase() === 'adult';
       }
-    },
-    async mounted() {
-      // 先检查认证状态
-      try {
-        const authResponse = await fetch('./api/auth/check', { method: 'GET', credentials: 'include' });
-        const authData = await authResponse.json();
-        
-        if (authData.authRequired && !authData.authenticated) {
-          window.location.href = './login.html?redirect=' + encodeURIComponent(window.location.pathname);
+
+      async function loadFolders() {
+        var data = await request("./api/manage/folders?storage=" + encodeURIComponent(state.storage));
+        state.folders = (data.folders || []).map(function (item) {
+          var path = normalizeFolderPath(item.path || item.folderPath || "");
+          return {
+            path: path,
+            name: item.name || (path ? path.split("/").pop() : "All Files"),
+            depth: Number(item.depth || (path ? path.split("/").length : 0)),
+            fileCount: Number(item.fileCount || 0),
+          };
+        });
+        renderFolders();
+      }
+
+      function buildListUrl(reset) {
+        var params = new URLSearchParams();
+        params.set("limit", "100");
+        params.set("folderPath", state.folderPath || "");
+        params.set("storage", state.storage || "all");
+        params.set("includeStats", "1");
+        if (state.search) params.set("search", state.search);
+        if (!reset && state.cursor) params.set("cursor", state.cursor);
+        return "./api/manage/list?" + params.toString();
+      }
+
+      async function loadFiles(reset) {
+        if (state.loading) return;
+        state.loading = true;
+        el.loadMoreBtn.disabled = true;
+        setStatus("Loading...");
+        try {
+          if (reset) {
+            state.cursor = null;
+            state.selected.clear();
+            state.files = [];
+            renderFiles();
+          }
+          var data = await request(buildListUrl(reset));
+          var mapped = (data.keys || []).map(function (file) {
+            var metadata = file.metadata || {};
+            return {
+              id: String(file.name || ""),
+              fileName: String(metadata.fileName || file.name || ""),
+              storageType: String(metadata.storageType || "telegram"),
+              fileSize: Number(metadata.fileSize || 0),
+              timestamp: Number(metadata.TimeStamp || 0),
+            };
+          });
+
+          if (reset) {
+            state.files = mapped;
+          } else {
+            var all = state.files.concat(mapped);
+            var byId = new Map();
+            all.forEach(function (item) {
+              byId.set(item.id, item);
+            });
+            state.files = Array.from(byId.values());
+          }
+
+          state.cursor = data.list_complete ? null : String(data.cursor || "");
+          el.loadMoreBtn.style.display = state.cursor ? "inline-flex" : "none";
+          renderFiles();
+          setStatus("Loaded");
+        } finally {
+          state.loading = false;
+          el.loadMoreBtn.disabled = false;
+        }
+      }
+
+      function renderFolders() {
+        var base = [{ path: "", name: "All Files", depth: 0, fileCount: state.files.length }];
+        var list = base.concat(state.folders).sort(function (a, b) {
+          if (a.depth !== b.depth) return a.depth - b.depth;
+          return String(a.path).localeCompare(String(b.path));
+        });
+
+        el.folderTree.innerHTML = list.map(function (folder) {
+          var active = normalizeFolderPath(folder.path) === state.folderPath;
+          return (
+            '<button class="folder-item' + (active ? " active" : "") + '" data-path="' + escapeHtml(folder.path) + '" style="padding-left:' + (8 + folder.depth * 14) + 'px">' +
+            '<span class="folder-item-name"><i class="fas fa-folder"></i><span>' + escapeHtml(folder.name) + "</span></span>" +
+            '<span class="folder-item-count">' + Number(folder.fileCount || 0) + "</span>" +
+            "</button>"
+          );
+        }).join("");
+
+        Array.prototype.forEach.call(el.folderTree.querySelectorAll("[data-path]"), function (button) {
+          button.addEventListener("click", function () {
+            state.folderPath = normalizeFolderPath(button.getAttribute("data-path") || "");
+            loadFiles(true).catch(handleError);
+            renderFolders();
+          });
+        });
+      }
+
+      function renderFiles() {
+        if (!state.files.length) {
+          el.fileBody.innerHTML = '<tr><td colspan="6"><div class="empty-state" style="display:block;padding:24px;border:none">No files in this folder.</div></td></tr>';
+          updateMeta();
           return;
         }
-        this.showLogoutButton = authData.authRequired && authData.authenticated;
-      } catch (e) {
-        this.$message.error('认证检查失败，请刷新页面');
-        return;
+
+        el.fileBody.innerHTML = state.files.map(function (file) {
+          var checked = state.selected.has(file.id) ? " checked" : "";
+          return (
+            "<tr>" +
+            '<td><input type="checkbox" data-select="' + escapeHtml(file.id) + '"' + checked + " /></td>" +
+            "<td><strong>" + escapeHtml(file.fileName) + "</strong><br><small>" + escapeHtml(file.id) + "</small></td>" +
+            '<td><span class="storage-chip">' + escapeHtml(file.storageType) + "</span></td>" +
+            "<td>" + escapeHtml(formatBytes(file.fileSize)) + "</td>" +
+            "<td>" + escapeHtml(formatTime(file.timestamp)) + "</td>" +
+            "<td><div class=\"row-actions\">" +
+            '<button class="load-btn" data-copy="' + escapeHtml(file.id) + '">Direct</button>' +
+            '<button class="load-btn" data-move="' + escapeHtml(file.id) + '">Move</button>' +
+            '<button class="load-btn" data-delete="' + escapeHtml(file.id) + '">Delete</button>' +
+            "</div></td>" +
+            "</tr>"
+          );
+        }).join("");
+
+        Array.prototype.forEach.call(el.fileBody.querySelectorAll("[data-select]"), function (node) {
+          node.addEventListener("change", function () {
+            var id = node.getAttribute("data-select");
+            if (!id) return;
+            if (node.checked) state.selected.add(id);
+            else state.selected.delete(id);
+            updateMeta();
+          });
+        });
+
+        Array.prototype.forEach.call(el.fileBody.querySelectorAll("[data-copy]"), function (node) {
+          node.addEventListener("click", function () {
+            copyLinks([node.getAttribute("data-copy") || ""]).catch(handleError);
+          });
+        });
+
+        Array.prototype.forEach.call(el.fileBody.querySelectorAll("[data-move]"), function (node) {
+          node.addEventListener("click", function () {
+            moveFiles([node.getAttribute("data-move") || ""]).catch(handleError);
+          });
+        });
+
+        Array.prototype.forEach.call(el.fileBody.querySelectorAll("[data-delete]"), function (node) {
+          node.addEventListener("click", function () {
+            deleteFiles([node.getAttribute("data-delete") || ""]).catch(handleError);
+          });
+        });
+
+        updateMeta();
       }
 
-      window.addEventListener('resize', this.handleWindowResize);
-      window.addEventListener('keydown', this.handleGlobalKeydown);
-      this.updateWindowWidth();
-
-      // 获取文件列表数据
-      try {
-        const result = await fetch("./api/manage/list?limit=100&includeStats=1", { method: 'GET', credentials: 'include' })
-          .then(response => response.json());
-        const mapped = (result.keys || []).map((file) => this.normalizeListItem(file));
-        this.tableData = mapped;
-        this.nextCursor = result.list_complete ? null : result.cursor;
-        this.totalCount = Number.isFinite(result?.stats?.total) ? result.stats.total : mapped.length;
-        this.updateStats();
-        // 恢复设置
-        this.sortOption = localStorage.getItem('sortOption') || this.sortOption;
-        this.sortData(this.tableData);
-        this.fileType = localStorage.getItem('fileType') || this.fileType;
-        this.loadMode = localStorage.getItem('loadMode') || this.loadMode;
-        this.safeMode = localStorage.getItem('safeMode') !== 'false';
-        // 初始化时不显示切换消息
-        this.switchFileType(this.fileType, false);
-      } catch {
-        this.$message.error('同步数据时出错，请检查网络连接');
+      async function createFolder() {
+        var seed = state.folderPath ? state.folderPath + "/" : "";
+        var input = window.prompt("Folder path", seed + "new-folder");
+        if (!input) return;
+        var path = normalizeFolderPath(input);
+        if (!path) return;
+        await request("./api/manage/folders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: path }),
+        });
+        await loadFolders();
+        setStatus("Folder created");
       }
 
-      // 检查系统连接状态
-      fetch('./api/status', { credentials: 'include' })
-        .then(response => response.json())
-        .then(status => { this.systemStatus = status; })
-        .catch(() => {});
-
-      // 恢复快捷方式设置
-      if (localStorage.getItem('quickWebsites')) {
-        this.quickWebsites = JSON.parse(localStorage.getItem('quickWebsites'));
+      async function renameFolder() {
+        if (!state.folderPath) return;
+        var parts = state.folderPath.split("/");
+        var oldName = parts.pop();
+        var parent = parts.join("/");
+        var newName = window.prompt("New folder name", oldName);
+        if (!newName) return;
+        var targetPath = normalizeFolderPath((parent ? parent + "/" : "") + newName);
+        if (!targetPath || targetPath === state.folderPath) return;
+        await request("./api/manage/folders", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sourcePath: state.folderPath, targetPath: targetPath }),
+        });
+        state.folderPath = targetPath;
+        await loadFolders();
+        await loadFiles(true);
+        setStatus("Folder renamed");
       }
-    }
-    ,
-    beforeDestroy() {
-      document.removeEventListener('mousemove', this.onBatchDrag);
-      document.removeEventListener('mouseup', this.stopBatchDrag);
-      window.removeEventListener('keydown', this.handleGlobalKeydown);
-      window.removeEventListener('resize', this.handleWindowResize);
-    }
-  });
-</script>
+
+      async function deleteFolder() {
+        if (!state.folderPath) return;
+        if (!window.confirm("Delete folder metadata only? Direct links stay valid.")) return;
+        var parent = state.folderPath.split("/");
+        parent.pop();
+        await request("./api/manage/folders?path=" + encodeURIComponent(state.folderPath) + "&recursive=1", { method: "DELETE" });
+        state.folderPath = parent.join("/");
+        await loadFolders();
+        await loadFiles(true);
+        setStatus("Folder deleted");
+      }
+
+      async function moveFiles(ids) {
+        var target = window.prompt("Move to folder path", state.folderPath || "");
+        if (target == null) return;
+        await request("./api/manage/files/move-folder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: ids, targetFolderPath: normalizeFolderPath(target) }),
+        });
+        ids.forEach(function (id) { state.selected.delete(id); });
+        await loadFolders();
+        await loadFiles(true);
+        setStatus("Moved files");
+      }
+
+      async function deleteFiles(ids) {
+        if (!ids.length) return;
+        if (!window.confirm("Delete selected files?")) return;
+        for (var i = 0; i < ids.length; i += 1) {
+          var id = ids[i];
+          if (!id) continue;
+          await request("./api/manage/delete/" + encodeURIComponent(id));
+          state.selected.delete(id);
+        }
+        await loadFolders();
+        await loadFiles(true);
+        setStatus("Deleted files");
+      }
+
+      async function copyLinks(ids) {
+        var links = ids.filter(Boolean).map(function (id) { return location.origin + "/file/" + encodeURIComponent(id); });
+        if (!links.length) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(links.join("\n"));
+        } else {
+          var textarea = document.createElement("textarea");
+          textarea.value = links.join("\n");
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+        }
+        setStatus("Copied " + links.length + " direct links");
+      }
+
+      function bindEvents() {
+        el.loadMoreBtn.addEventListener("click", function () { loadFiles(false).catch(handleError); });
+        el.refreshBtn.addEventListener("click", function () {
+          loadFolders().then(function () { return loadFiles(true); }).catch(handleError);
+        });
+        el.searchInput.addEventListener("keydown", function (event) {
+          if (event.key !== "Enter") return;
+          state.search = el.searchInput.value.trim();
+          loadFiles(true).catch(handleError);
+        });
+        el.storageFilter.addEventListener("change", function () {
+          state.storage = el.storageFilter.value || "all";
+          state.folderPath = "";
+          loadFolders().then(function () { return loadFiles(true); }).catch(handleError);
+        });
+        el.selectAll.addEventListener("change", function () {
+          if (el.selectAll.checked) state.files.forEach(function (f) { state.selected.add(f.id); });
+          else state.selected.clear();
+          renderFiles();
+        });
+        el.newFolderBtn.addEventListener("click", function () { createFolder().catch(handleError); });
+        el.renameFolderBtn.addEventListener("click", function () { renameFolder().catch(handleError); });
+        el.deleteFolderBtn.addEventListener("click", function () { deleteFolder().catch(handleError); });
+        el.moveSelectedBtn.addEventListener("click", function () { moveFiles(Array.from(state.selected)).catch(handleError); });
+        el.copySelectedBtn.addEventListener("click", function () { copyLinks(Array.from(state.selected)).catch(handleError); });
+        el.deleteSelectedBtn.addEventListener("click", function () { deleteFiles(Array.from(state.selected)).catch(handleError); });
+      }
+
+      function handleError(err) {
+        console.error(err);
+        setStatus((err && err.message) || "Failed", true);
+      }
+
+      (async function init() {
+        bindEvents();
+        var ok = await ensureAuth();
+        if (!ok) return;
+        await loadFolders();
+        await loadFiles(true);
+      })().catch(handleError);
+    })();
+  </script>
 </body>
 </html>
+

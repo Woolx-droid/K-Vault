@@ -1,2 +1,2 @@
-/app       /app/            301
-/app/*     /app/index.html  200
+/app       /                301
+/app/*     /                301

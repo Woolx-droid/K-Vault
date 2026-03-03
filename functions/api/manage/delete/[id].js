@@ -1,7 +1,11 @@
-import { createS3Client } from '../../../utils/s3client.js';
+﻿import { createS3Client } from '../../../utils/s3client.js';
 import { deleteDiscordMessage } from '../../../utils/discord.js';
 import { deleteHuggingFaceFile } from '../../../utils/huggingface.js';
+import { deleteWebDAVFile } from '../../../utils/webdav.js';
+import { deleteGitHubFile } from '../../../utils/github.js';
 import { buildTelegramBotApiUrl } from '../../../utils/telegram.js';
+
+const STORAGE_PREFIXES = ['img:', 'vid:', 'aud:', 'doc:', 'r2:', 's3:', 'discord:', 'hf:', 'webdav:', 'github:', ''];
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -9,11 +13,9 @@ export async function onRequest(context) {
 
   try {
     fileId = decodeURIComponent(fileId);
-  } catch (error) {
-    console.warn('Failed to decode fileId, using raw value:', fileId);
+  } catch {
+    fileId = String(params.id || '');
   }
-
-  console.log('Deleting file:', fileId);
 
   try {
     if (!env.img_url) {
@@ -21,19 +23,14 @@ export async function onRequest(context) {
     }
 
     const { record, kvKey } = await getRecordWithKey(env, fileId);
-    if (!record || !record.metadata) {
-      return jsonResponse(
-        { success: false, error: 'File metadata not found.' },
-        404
-      );
+    if (!record?.metadata) {
+      return jsonResponse({ success: false, error: 'File metadata not found.' }, 404);
     }
 
     const metadata = record.metadata;
-    const storageType = metadata.storageType || metadata.storage || 'telegram';
+    const storageType = String(metadata.storageType || metadata.storage || 'telegram').toLowerCase();
 
-    // --- R2 删除 ---
-    const isR2 = fileId.startsWith('r2:') || storageType === 'r2';
-    if (isR2) {
+    if (storageType === 'r2' || fileId.startsWith('r2:')) {
       const r2Key = metadata.r2Key
         || (kvKey?.startsWith('r2:') ? kvKey.slice(3) : null)
         || (fileId.startsWith('r2:') ? fileId.slice(3) : fileId);
@@ -48,18 +45,19 @@ export async function onRequest(context) {
       return jsonResponse({
         success: true,
         message: 'Deleted from R2 and KV.',
-        fileId, r2Key, kvKey
+        fileId,
+        r2Key,
+        kvKey,
       });
     }
 
-    // --- S3 删除 ---
     if (storageType === 's3' || fileId.startsWith('s3:')) {
       const s3Key = metadata.s3Key || fileId.replace(/^s3:/, '');
       try {
         const s3 = createS3Client(env);
         await s3.deleteObject(s3Key);
-      } catch (e) {
-        console.error('S3 delete error (best-effort):', e);
+      } catch (error) {
+        console.error('S3 delete error (best-effort):', error);
       }
       await env.img_url.delete(kvKey);
       await purgeEdgeCache(request, fileId);
@@ -67,53 +65,99 @@ export async function onRequest(context) {
       return jsonResponse({
         success: true,
         message: 'Deleted from S3 and KV.',
-        fileId, kvKey
+        fileId,
+        kvKey,
       });
     }
 
-    // --- Discord 删除 ---
     if (storageType === 'discord' || fileId.startsWith('discord:')) {
       let discordDeleted = false;
       try {
         if (metadata.discordChannelId && metadata.discordMessageId) {
           discordDeleted = await deleteDiscordMessage(
-            metadata.discordChannelId, metadata.discordMessageId, env
+            metadata.discordChannelId,
+            metadata.discordMessageId,
+            env
           );
         }
-      } catch (e) {
-        console.error('Discord delete error (best-effort):', e);
+      } catch (error) {
+        console.error('Discord delete error (best-effort):', error);
       }
+
       await env.img_url.delete(kvKey);
       await purgeEdgeCache(request, fileId);
 
       return jsonResponse({
         success: true,
         message: discordDeleted ? 'Deleted from Discord and KV.' : 'KV deleted (Discord best-effort).',
-        fileId, kvKey
+        fileId,
+        kvKey,
       });
     }
 
-    // --- HuggingFace 删除 ---
     if (storageType === 'huggingface' || fileId.startsWith('hf:')) {
       let hfDeleted = false;
       try {
         if (metadata.hfPath) {
           hfDeleted = await deleteHuggingFaceFile(metadata.hfPath, env);
         }
-      } catch (e) {
-        console.error('HuggingFace delete error (best-effort):', e);
+      } catch (error) {
+        console.error('HuggingFace delete error (best-effort):', error);
       }
+
       await env.img_url.delete(kvKey);
       await purgeEdgeCache(request, fileId);
 
       return jsonResponse({
         success: true,
         message: hfDeleted ? 'Deleted from HuggingFace and KV.' : 'KV deleted (HuggingFace best-effort).',
-        fileId, kvKey
+        fileId,
+        kvKey,
       });
     }
 
-    // --- Telegram 删除（默认） ---
+    if (storageType === 'webdav' || fileId.startsWith('webdav:')) {
+      let webdavDeleted = false;
+      try {
+        const webdavPath = metadata.webdavPath || metadata.path || fileId.replace(/^webdav:/, '');
+        if (webdavPath) {
+          webdavDeleted = await deleteWebDAVFile(webdavPath, env);
+        }
+      } catch (error) {
+        console.error('WebDAV delete error (best-effort):', error);
+      }
+
+      await env.img_url.delete(kvKey);
+      await purgeEdgeCache(request, fileId);
+
+      return jsonResponse({
+        success: true,
+        message: webdavDeleted ? 'Deleted from WebDAV and KV.' : 'KV deleted (WebDAV best-effort).',
+        fileId,
+        kvKey,
+      });
+    }
+
+    if (storageType === 'github' || fileId.startsWith('github:')) {
+      let githubDeleted = false;
+      try {
+        const githubStorageKey = metadata.githubStorageKey || fileId.replace(/^github:/, '');
+        githubDeleted = await deleteGitHubFile(githubStorageKey, metadata, env);
+      } catch (error) {
+        console.error('GitHub delete error (best-effort):', error);
+      }
+
+      await env.img_url.delete(kvKey);
+      await purgeEdgeCache(request, fileId);
+
+      return jsonResponse({
+        success: true,
+        message: githubDeleted ? 'Deleted from GitHub and KV.' : 'KV deleted (GitHub best-effort).',
+        fileId,
+        kvKey,
+      });
+    }
+
     let telegramDeleted = false;
     let telegramDeleteAttempted = false;
     let telegramDeleteError = null;
@@ -136,11 +180,12 @@ export async function onRequest(context) {
       message: telegramDeleted
         ? 'Deleted from Telegram and KV.'
         : 'KV metadata deleted (Telegram deletion best-effort).',
-      fileId, kvKey,
+      fileId,
+      kvKey,
       telegramDeleteAttempted,
       telegramDeleted,
       warning: telegramDeleted ? '' : 'Telegram deletion failed or messageId missing.',
-      telegramDeleteError: telegramDeleteError ? telegramDeleteError.message : null
+      telegramDeleteError: telegramDeleteError ? telegramDeleteError.message : null,
     });
   } catch (error) {
     console.error('Delete error:', error);
@@ -149,13 +194,12 @@ export async function onRequest(context) {
 }
 
 async function getRecordWithKey(env, fileId) {
-  const prefixes = ['img:', 'vid:', 'aud:', 'doc:', 'r2:', 's3:', 'discord:', 'hf:', ''];
-  const hasKnownPrefix = prefixes.some((prefix) => prefix && fileId.startsWith(prefix));
-  const candidateKeys = hasKnownPrefix ? [fileId] : prefixes.map((prefix) => `${prefix}${fileId}`);
+  const hasKnownPrefix = STORAGE_PREFIXES.some((prefix) => prefix && fileId.startsWith(prefix));
+  const candidateKeys = hasKnownPrefix ? [fileId] : STORAGE_PREFIXES.map((prefix) => `${prefix}${fileId}`);
 
   for (const key of candidateKeys) {
     const record = await env.img_url.getWithMetadata(key);
-    if (record && record.metadata) {
+    if (record?.metadata) {
       return { record, kvKey: key };
     }
   }
@@ -174,15 +218,15 @@ async function deleteTelegramMessage(messageId, env) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: env.TG_Chat_ID,
-        message_id: messageId
-      })
+        message_id: messageId,
+      }),
     });
 
     let data = { ok: false };
     try {
       data = await response.json();
-    } catch (jsonError) {
-      console.error('Failed to parse Telegram deleteMessage response:', jsonError);
+    } catch {
+      data = { ok: false };
     }
 
     return response.ok && data.ok;
@@ -203,14 +247,14 @@ async function purgeEdgeCache(request, fileId) {
     for (const url of urlsToPurge) {
       await cache.delete(new Request(url));
     }
-  } catch (e) {
-    console.warn('Edge cache purge failed (non-critical):', e.message);
+  } catch (error) {
+    console.warn('Edge cache purge failed (non-critical):', error.message);
   }
 }
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
   });
 }

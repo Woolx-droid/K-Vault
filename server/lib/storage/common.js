@@ -60,8 +60,6 @@ function normalizeStorageType(type) {
     'huggingface',
     'webdav',
     'github',
-    'gdrive',
-    'onedrive',
   ];
   if (supported.includes(normalized)) return normalized;
   return 'telegram';

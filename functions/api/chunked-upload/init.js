@@ -29,6 +29,7 @@ export async function onRequestPost(context) {
 
     const body = await request.json();
     const { fileName, fileSize, fileType, totalChunks, storageMode } = body || {};
+    const folderPath = normalizeFolderPath(body?.folderPath || body?.folder || '');
     const normalizedFileSize = Number(fileSize || 0);
     const normalizedTotalChunks = Number(totalChunks || 0);
 
@@ -42,7 +43,7 @@ export async function onRequestPost(context) {
 
     const uploadId = generateUploadId();
 
-    const validModes = ['telegram', 'r2', 's3', 'discord', 'huggingface'];
+    const validModes = ['telegram', 'r2', 's3', 'discord', 'huggingface', 'webdav', 'github'];
     const normalizedStorage = validModes.includes(storageMode) ? storageMode : 'telegram';
 
     const chunkBackend = resolveChunkBackend(env);
@@ -54,6 +55,7 @@ export async function onRequestPost(context) {
       fileType,
       totalChunks: normalizedTotalChunks,
       storageMode: normalizedStorage,
+      folderPath,
       chunkBackend,
       uploadedChunks: [],
       createdAt: Date.now(),
@@ -125,4 +127,19 @@ function generateUploadId() {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
   return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function normalizeFolderPath(value) {
+  const raw = String(value || '').replace(/\\/g, '/').trim();
+  const output = [];
+  for (const part of raw.split('/')) {
+    const piece = part.trim();
+    if (!piece || piece === '.') continue;
+    if (piece === '..') {
+      output.pop();
+      continue;
+    }
+    output.push(piece);
+  }
+  return output.join('/');
 }

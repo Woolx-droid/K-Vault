@@ -6,6 +6,8 @@ import { checkAuthentication, isAuthRequired } from '../../utils/auth.js';
 import { createS3Client } from '../../utils/s3client.js';
 import { uploadToDiscord } from '../../utils/discord.js';
 import { hasHuggingFaceConfig, uploadToHuggingFace } from '../../utils/huggingface.js';
+import { hasWebDAVConfig, normalizeWebDAVPath, uploadToWebDAV } from '../../utils/webdav.js';
+import { hasGitHubConfig, normalizeGitHubStoragePath, uploadToGitHub } from '../../utils/github.js';
 import {
   buildTelegramDirectLink,
   buildTelegramBotApiUrl,
@@ -80,6 +82,7 @@ export async function onRequestPost(context) {
 
     const fileExtension = getFileExtension(taskData.fileName);
     let storageType = taskData.storageMode || 'telegram';
+    const folderPath = normalizeFolderPath(taskData.folderPath || '');
     let responseFileKey = null;
     let metadataKey = null;
     let extraMetadata = {};
@@ -130,7 +133,7 @@ export async function onRequestPost(context) {
       }
       const arrayBuffer = await file.arrayBuffer();
       const hfId = `hf_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      const hfPath = `uploads/${hfId}.${fileExtension}`;
+      const hfPath = joinStoragePath(folderPath, `${hfId}.${fileExtension}`);
       const hfResult = await uploadToHuggingFace(arrayBuffer, hfPath, taskData.fileName, env);
       if (!hfResult.success) {
         return jsonResponse({ error: 'HuggingFace 上传失败: ' + hfResult.error }, 500);
@@ -138,6 +141,45 @@ export async function onRequestPost(context) {
       responseFileKey = `hf:${hfId}.${fileExtension}`;
       metadataKey = responseFileKey;
       extraMetadata.hfPath = hfPath;
+    } else if (storageType === 'webdav') {
+      if (!hasWebDAVConfig(env)) {
+        return jsonResponse({ error: 'WebDAV 未配置，无法完成上传' }, 500);
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      const wdId = `wd_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const publicId = `${wdId}.${fileExtension}`;
+      const webdavPath = joinStoragePath(folderPath, publicId);
+      const webdavResult = await uploadToWebDAV(
+        arrayBuffer,
+        webdavPath,
+        file.type || 'application/octet-stream',
+        env
+      );
+      responseFileKey = `webdav:${publicId}`;
+      metadataKey = responseFileKey;
+      extraMetadata.webdavPath = normalizeWebDAVPath(webdavResult.path || webdavPath);
+      extraMetadata.webdavEtag = webdavResult.etag || undefined;
+    } else if (storageType === 'github') {
+      if (!hasGitHubConfig(env)) {
+        return jsonResponse({ error: 'GitHub 未配置，无法完成上传' }, 500);
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      const ghId = `github_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const publicId = `${ghId}.${fileExtension}`;
+      const githubStorageKey = joinStoragePath(folderPath, publicId);
+      const githubResult = await uploadToGitHub(
+        arrayBuffer,
+        normalizeGitHubStoragePath(githubStorageKey),
+        taskData.fileName,
+        file.type || 'application/octet-stream',
+        env
+      );
+      responseFileKey = `github:${publicId}`;
+      metadataKey = responseFileKey;
+      extraMetadata.githubStorageKey = normalizeGitHubStoragePath(
+        githubResult.storagePath || githubStorageKey
+      );
+      Object.assign(extraMetadata, githubResult.metadata || {});
     } else {
       storageType = 'telegram';
       const result = await uploadToTelegram(file, env);
@@ -184,6 +226,7 @@ export async function onRequestPost(context) {
           chunked: true,
           totalChunks,
           storageType,
+          folderPath: folderPath || undefined,
           r2Key: storageType === 'r2' ? metadataKey.replace(/^r2:/, '') : undefined,
           telegramMessageId: storageType === 'telegram' ? taskData.telegramMessageId : undefined,
           ...extraMetadata,
@@ -355,6 +398,27 @@ function getFileExtension(fileName) {
   const ext = String(fileName || '').split('.').pop()?.toLowerCase();
   if (!ext || ext === String(fileName || '').toLowerCase()) return 'bin';
   return ext.replace(/[^a-z0-9]/g, '') || 'bin';
+}
+
+function normalizeFolderPath(value) {
+  const raw = String(value || '').replace(/\\/g, '/').trim();
+  const output = [];
+  for (const part of raw.split('/')) {
+    const piece = part.trim();
+    if (!piece || piece === '.') continue;
+    if (piece === '..') {
+      output.pop();
+      continue;
+    }
+    output.push(piece);
+  }
+  return output.join('/');
+}
+
+function joinStoragePath(folderPath, fileName) {
+  const normalizedFolder = normalizeFolderPath(folderPath);
+  if (!normalizedFolder) return fileName;
+  return `${normalizedFolder}/${fileName}`;
 }
 
 async function buildTelegramDirectId(

@@ -49,7 +49,7 @@ export async function onRequest(context) {
       return jsonResponse({ error: 'KV storage not available' }, 500);
     }
 
-    const prefixes = ['img:', 'vid:', 'aud:', 'doc:', 'r2:', 's3:', 'discord:', 'hf:', ''];
+    const prefixes = ['img:', 'vid:', 'aud:', 'doc:', 'r2:', 's3:', 'discord:', 'hf:', 'webdav:', 'github:', ''];
     let record = null;
     let foundKey = null;
 

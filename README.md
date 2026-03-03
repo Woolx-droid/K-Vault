@@ -44,7 +44,7 @@
 - **无限存储** - 不限数量的图片和文件上传
 - **完全免费** - 托管于 Cloudflare，免费额度内零成本
 - **免费域名** - 使用 `*.pages.dev` 二级域名，也支持自定义域名
-- **多存储后端** - 支持 Telegram、Cloudflare R2、S3 兼容存储、Discord、HuggingFace
+- **多存储后端** - 支持 Telegram、Cloudflare R2、S3 兼容存储、Discord、HuggingFace、WebDAV、GitHub
 - **Telegram Webhook 回链** - 机器人在频道/群接收文件后自动回复直链
 - **KV 写入优化** - Telegram 可启用签名直链，显著降低 KV 读写消耗
 - **内容审核** - 可选的图片审核 API，自动屏蔽不良内容
@@ -57,8 +57,15 @@
 - **双模部署** - 保留 Cloudflare Pages 部署，同时新增 Docker 自托管（`docker compose up -d`）
 - **动态存储配置管理** - 支持在管理端通过 API 对存储配置进行新增/编辑/删除/测试/设为默认
 - **可插拔设置存储（Docker）** - 基础站点设置可使用 `sqlite`（默认）或 Redis 协议后端（Upstash / Redis / KVrocks）
-- **Vue3 现代前端** - 新增 `/app/` Vue3 前端，同时保留 legacy 页面以兼容旧流程
+- **前端路径简化** - 以根路径页面为主流程（`/`、`/admin.html`、`/webdav.html`）
 - **GitHub Actions 镜像构建** - 主分支/Tag 自动构建并推送 `api` + `web` 镜像
+
+### 2026-03 近期更新（微调）
+
+- 后台管理页统一为根路径 `/admin.html`，支持文件夹树与批量文件操作。
+- 新增 `/webdav.html` 独立 WebDAV 页面，UI 与主页风格保持一致。
+- 新增 GitHub 存储方案；移除 Google Drive / OneDrive 适配。
+- Docker 与 Cloudflare Pages 的页面入口保持一致，便于 Fork 后直接部署。
 
 ---
 
@@ -137,8 +144,9 @@ docker compose --profile redis up -d --build
 ```
 
 4. 访问地址：
-   - 兼容旧版页面：`http://<host>:8080/`
-   - Vue3 新版前端：`http://<host>:8080/app/`
+   - 上传首页：`http://<host>:8080/`
+   - 管理后台：`http://<host>:8080/admin.html`
+   - WebDAV 页面：`http://<host>:8080/webdav.html`
 
 完整 Docker 说明请查看 [README-DOCKER.md](README-DOCKER.md)。
 
@@ -421,7 +429,7 @@ curl -X POST "http://127.0.0.1:8081/bot<YOUR_BOT_TOKEN>/setWebhook" \
 | 页面 | 路径 | 说明 |
 | :--- | :--- | :--- |
 | 首页/上传 | `/` | 批量上传、拖拽、粘贴上传 |
-| Vue3 新版前端 | `/app/` | Vue3 前端（上传/文件管理/存储管理） |
+| WebDAV 独立页 | `/webdav.html` | WebDAV 上传/状态检查/URL 上传 |
 | 图片浏览 | `/gallery.html` | 图片网格浏览 |
 | 管理后台 | `/admin.html` | 文件管理、黑白名单 |
 | 文件预览 | `/preview.html` | 多格式文件预览 |

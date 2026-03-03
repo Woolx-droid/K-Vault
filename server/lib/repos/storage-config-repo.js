@@ -45,8 +45,6 @@ class StorageConfigRepository {
       huggingface: ['token'],
       webdav: ['password', 'bearerToken', 'token'],
       github: ['token'],
-      gdrive: ['accessToken', 'token', 'privateKey'],
-      onedrive: ['accessToken', 'token', 'clientSecret'],
     };
 
     const fields = secretFieldsByType[type] || [];
@@ -73,8 +71,6 @@ class StorageConfigRepository {
       huggingface: ['token'],
       webdav: ['password', 'bearerToken', 'token'],
       github: ['token'],
-      gdrive: ['accessToken', 'token', 'privateKey'],
-      onedrive: ['accessToken', 'token', 'clientSecret'],
     };
 
     const fields = secretFieldsByType[type] || [];
@@ -258,14 +254,6 @@ class StorageConfigRepository {
       huggingface: Boolean(byType.token && byType.repo),
       webdav: Boolean(byType.baseUrl && (byType.bearerToken || (byType.username && byType.password))),
       github: Boolean(byType.repo && byType.token),
-      gdrive: Boolean(
-        byType.folderId
-        && (byType.accessToken || (byType.serviceAccountEmail && byType.privateKey))
-      ),
-      onedrive: Boolean(
-        byType.accessToken
-        || (byType.tenantId && byType.clientId && byType.clientSecret && byType.driveId)
-      ),
     };
 
     if (!hasRequired[type]) {

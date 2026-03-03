@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>K-Vault | WebDAV</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/theme.css" />
+    <script src="/theme.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" />
+    <style>
+      :root {
+        --wf-surface: rgba(255, 255, 255, 0.92);
+        --wf-border: rgba(255, 255, 255, 0.58);
+        --wf-shadow: 0 10px 28px rgba(20, 32, 55, 0.12);
+        --wf-shadow-soft: 0 6px 18px rgba(20, 32, 55, 0.1);
+        --wf-primary: #0f766e;
+        --wf-primary-soft: rgba(15, 118, 110, 0.13);
+      }
+
+      html[data-theme="dark"] {
+        --wf-surface: rgba(16, 26, 43, 0.9);
+        --wf-border: rgba(120, 145, 192, 0.32);
+        --wf-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+        --wf-shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.3);
+        --wf-primary: #67d4c2;
+        --wf-primary-soft: rgba(103, 212, 194, 0.17);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(60vw 50vh at 12% 8%, rgba(12, 164, 133, 0.2), transparent 70%),
+          radial-gradient(50vw 45vh at 88% 14%, rgba(255, 166, 104, 0.24), transparent 72%),
+          linear-gradient(130deg, #eef6ff 0%, #ecfffa 50%, #fff4ea 100%);
+        color: #1f2937;
+        font-family: "Manrope", "Noto Sans SC", "PingFang SC", "Segoe UI", sans-serif;
+      }
+
+      html[data-theme="dark"] body {
+        color: #e7eeff;
+        background:
+          radial-gradient(60vw 50vh at 12% 8%, rgba(64, 129, 255, 0.2), transparent 70%),
+          radial-gradient(50vw 45vh at 88% 14%, rgba(68, 170, 146, 0.2), transparent 72%),
+          linear-gradient(140deg, #0a1222 0%, #0d1729 52%, #132237 100%);
+      }
+
+      .page {
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+
+      .header {
+        position: sticky;
+        top: 14px;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: var(--wf-surface);
+        border: 1px solid var(--wf-border);
+        box-shadow: var(--wf-shadow-soft);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        margin-bottom: 14px;
+      }
+
+      .header-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: "Sora", "Manrope", "Noto Sans SC", sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: inherit;
+        margin: 0;
+      }
+
+      .header-title i {
+        color: var(--wf-primary);
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .action-link,
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid var(--wf-border);
+        border-radius: 999px;
+        padding: 9px 13px;
+        min-height: 40px;
+        background: var(--wf-surface);
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        font-weight: 600;
+      }
+
+      .action-link:hover,
+      .action-btn:hover {
+        border-color: rgba(15, 118, 110, 0.4);
+        background: var(--wf-primary-soft);
+        box-shadow: var(--wf-shadow-soft);
+      }
+
+      .action-link.active {
+        border-color: rgba(15, 118, 110, 0.5);
+        background: var(--wf-primary-soft);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        border: 1px solid var(--wf-border);
+        background: var(--wf-surface);
+        border-radius: 16px;
+        box-shadow: var(--wf-shadow-soft);
+        padding: 14px;
+      }
+
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 1.02rem;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      input,
+      button {
+        border: 1px solid var(--wf-border);
+        border-radius: 10px;
+        background: var(--wf-surface);
+        color: inherit;
+        padding: 10px;
+      }
+
+      input[type="text"] {
+        min-width: 260px;
+        flex: 1;
+      }
+
+      button {
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: rgba(15, 118, 110, 0.45);
+      }
+
+      button[disabled] {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .hint {
+        margin: 10px 0 0;
+        color: #64748b;
+        font-size: 0.86rem;
+      }
+
+      html[data-theme="dark"] .hint {
+        color: #9aa9c7;
+      }
+
+      .status-line {
+        color: #64748b;
+        font-size: 0.9rem;
+      }
+
+      html[data-theme="dark"] .status-line {
+        color: #9aa9c7;
+      }
+
+      .status-line.ok {
+        color: #16a34a;
+      }
+
+      .status-line.bad {
+        color: #ef4444;
+      }
+
+      .result-list {
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        gap: 7px;
+      }
+
+      .result-list li {
+        word-break: break-all;
+      }
+
+      .result-list a {
+        color: #0f62fe;
+      }
+
+      .result-list .error {
+        color: #ef4444;
+      }
+
+      .span-2 {
+        grid-column: 1 / -1;
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .span-2 {
+          grid-column: auto;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .page {
+          padding: 10px;
+        }
+
+        .header {
+          top: 8px;
+          padding: 10px 12px;
+          flex-wrap: wrap;
+        }
+
+        .header-title {
+          width: 100%;
+          font-size: 1rem;
+        }
+
+        .header-actions {
+          width: 100%;
+          justify-content: flex-start;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        .header-actions::-webkit-scrollbar {
+          display: none;
+        }
+
+        .action-link,
+        .action-btn {
+          flex: 0 0 auto;
+          font-size: 0.82rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="header">
+        <h1 class="header-title">
+          <i class="fas fa-hard-drive"></i>
+          <span>WebDAV Console</span>
+        </h1>
+        <div class="header-actions">
+          <a class="action-link" href="./"><i class="fas fa-home"></i><span>Upload</span></a>
+          <a class="action-link" href="./gallery.html"><i class="fas fa-images"></i><span>Gallery</span></a>
+          <a class="action-link" href="./admin.html"><i class="fas fa-folder-tree"></i><span>Admin</span></a>
+          <a class="action-link active" href="./webdav.html"><i class="fas fa-hard-drive"></i><span>WebDAV</span></a>
+          <button type="button" class="action-btn" data-theme-toggle aria-label="Toggle theme">
+            <i class="fas fa-moon" data-theme-icon></i>
+            <span data-theme-label>Theme</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="layout">
+        <article class="card">
+          <h2>WebDAV Status</h2>
+          <p id="statusText" class="status-line">Checking...</p>
+          <button id="refreshStatusBtn" type="button">Refresh Status</button>
+        </article>
+
+        <article class="card">
+          <h2>Folder Path</h2>
+          <div class="row">
+            <input id="folderPathInput" type="text" placeholder="Optional folder path, example: photos/2026" />
+          </div>
+          <p class="hint">Folder metadata can be changed later without breaking direct links.</p>
+        </article>
+
+        <article class="card">
+          <h2>Upload Files to WebDAV</h2>
+          <div class="row">
+            <input id="fileInput" type="file" multiple />
+            <button id="uploadFilesBtn" type="button">Upload Files</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Upload from URL to WebDAV</h2>
+          <div class="row">
+            <input id="urlInput" type="text" placeholder="https://example.com/file.zip" />
+            <button id="uploadUrlBtn" type="button">Upload URL</button>
+          </div>
+        </article>
+
+        <article class="card span-2">
+          <h2>Recent Results</h2>
+          <ul id="resultList" class="result-list"></ul>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var statusText = document.getElementById("statusText");
+        var folderPathInput = document.getElementById("folderPathInput");
+        var fileInput = document.getElementById("fileInput");
+        var uploadFilesBtn = document.getElementById("uploadFilesBtn");
+        var urlInput = document.getElementById("urlInput");
+        var uploadUrlBtn = document.getElementById("uploadUrlBtn");
+        var resultList = document.getElementById("resultList");
+        var refreshStatusBtn = document.getElementById("refreshStatusBtn");
+
+        function normalizeFolderPath(value) {
+          return String(value || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "").trim();
+        }
+
+        function ensureArray(value) {
+          if (Array.isArray(value)) return value;
+          if (value == null) return [];
+          return [value];
+        }
+
+        function pushResult(message, kind, link) {
+          var li = document.createElement("li");
+          if (kind === "error") {
+            li.className = "error";
+            li.textContent = message;
+            resultList.prepend(li);
+            return;
+          }
+
+          if (link) {
+            var text = document.createTextNode(message + " ");
+            var anchor = document.createElement("a");
+            anchor.href = link;
+            anchor.target = "_blank";
+            anchor.rel = "noopener";
+            anchor.textContent = link;
+            li.appendChild(text);
+            li.appendChild(anchor);
+            resultList.prepend(li);
+            return;
+          }
+
+          li.textContent = message;
+          resultList.prepend(li);
+        }
+
+        async function request(url, options) {
+          var response = await fetch(url, Object.assign({ credentials: "include" }, options || {}));
+          var data = await response.json().catch(function () {
+            return null;
+          });
+
+          if (!response.ok) {
+            var message = data && (data.error || data.message || data.errorDetail);
+            if (!message) {
+              message = "Request failed (" + response.status + ")";
+            }
+            throw new Error(message);
+          }
+          return data;
+        }
+
+        function setStatus(message, ok) {
+          statusText.className = "status-line";
+          if (ok === true) statusText.classList.add("ok");
+          if (ok === false) statusText.classList.add("bad");
+          statusText.textContent = message;
+        }
+
+        async function checkStatus() {
+          setStatus("Checking...", null);
+          var data = await request("./api/status");
+          var webdav = data.webdav || {};
+          var ok = Boolean(webdav.connected && webdav.enabled);
+          if (ok) {
+            setStatus("WebDAV is connected and enabled.", true);
+          } else {
+            setStatus("WebDAV is not ready: " + (webdav.message || "Not configured"), false);
+          }
+        }
+
+        async function uploadFiles() {
+          var files = ensureArray(fileInput.files);
+          if (!files.length) return;
+
+          uploadFilesBtn.disabled = true;
+          try {
+            var folderPath = normalizeFolderPath(folderPathInput.value);
+            for (var i = 0; i < files.length; i += 1) {
+              var form = new FormData();
+              form.append("file", files[i]);
+              form.append("storageMode", "webdav");
+              form.append("folderPath", folderPath);
+              var payload = await request("./upload", { method: "POST", body: form });
+              var first = Array.isArray(payload) ? payload[0] : payload;
+              var src = first && first.src ? String(first.src) : "";
+              if (src) {
+                pushResult("File uploaded:", "ok", src);
+              } else {
+                pushResult("File uploaded, but no direct URL was returned.");
+              }
+            }
+            fileInput.value = "";
+          } finally {
+            uploadFilesBtn.disabled = false;
+          }
+        }
+
+        async function uploadFromUrl() {
+          var sourceUrl = String(urlInput.value || "").trim();
+          if (!sourceUrl) return;
+
+          uploadUrlBtn.disabled = true;
+          try {
+            var folderPath = normalizeFolderPath(folderPathInput.value);
+            var payload = await request("./api/upload-from-url", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                url: sourceUrl,
+                storageMode: "webdav",
+                folderPath: folderPath,
+              }),
+            });
+            var src = payload && (payload.src || payload.url || (payload.file && payload.file.src));
+            if (src) {
+              pushResult("URL upload finished:", "ok", String(src));
+            } else {
+              pushResult("URL upload finished.");
+            }
+          } finally {
+            uploadUrlBtn.disabled = false;
+          }
+        }
+
+        async function ensureAuth() {
+          var auth = await request("./api/auth/check");
+          if (auth.authRequired && !auth.authenticated) {
+            var redirect = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = "./login.html?redirect=" + redirect;
+            return false;
+          }
+          return true;
+        }
+
+        function onError(prefix, error) {
+          var message = prefix + ": " + ((error && error.message) || "Unknown error");
+          pushResult(message, "error");
+        }
+
+        refreshStatusBtn.addEventListener("click", function () {
+          checkStatus().catch(function (error) {
+            setStatus(error.message || "Status check failed.", false);
+          });
+        });
+
+        uploadFilesBtn.addEventListener("click", function () {
+          uploadFiles().catch(function (error) {
+            onError("File upload failed", error);
+          });
+        });
+
+        uploadUrlBtn.addEventListener("click", function () {
+          uploadFromUrl().catch(function (error) {
+            onError("URL upload failed", error);
+          });
+        });
+
+        (async function init() {
+          var authenticated = await ensureAuth();
+          if (!authenticated) return;
+          await checkStatus();
+        })().catch(function (error) {
+          setStatus(error.message || "Initialization failed.", false);
+        });
+      })();
+    </script>
+  </body>
+</html>
