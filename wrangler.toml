@@ -4,7 +4,7 @@ compatibility_date = "2026-03-13"  # 兼容日期，用最新的即可
 
 # 环境变量配置（包含 R2 启用开关 + 之前的 Telegram 低 KV 写入模式）
 [vars]
-USE_R2 = "true"  # 启用 R2 存储（必填）
+USE_R2 = "false"  # 启用 R2 存储（必填）
 # 可选：Telegram 低 KV 写入模式（按需开启，注释掉不需要的）
 # TELEGRAM_LINK_MODE = "signed"
 # MINIMIZE_KV_WRITES = "true"
