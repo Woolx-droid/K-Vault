@@ -1,6 +1,5 @@
 # Pages/Worker 项目基本配置
-name = "你的项目名称"  # 替换成你的 Cloudflare Pages/Worker 项目名
-main = "src/index.js"    # 你的入口文件路径（根据实际情况调整）
+name = "k-vault"  # 替换成你的 Cloudflare Pages/Worker 项目名
 compatibility_date = "2026-03-13"  # 兼容日期，用最新的即可
 
 # 环境变量配置（包含 R2 启用开关 + 之前的 Telegram 低 KV 写入模式）
@@ -17,10 +16,3 @@ binding = "R2_BUCKET"  # 必须和代码里的 env.R2_BUCKET 一致
 bucket_name = "k-vault-files"  # 你的 R2 存储桶名称（创建的是这个名就不用改）
 # 可选：如果需要指定区域，取消注释并填写
 # preview_bucket_name = "k-vault-files"
-
-# KV 命名空间绑定（图片管理必需）
-[[kv_namespaces]]
-binding = "img_url"  # 必须和代码里的 env.img_url 一致
-id = "你的 KV 命名空间 ID"  # 替换成 k-vault 的 ID（Cloudflare KV 页面可查）
-# 可选：预览环境的 KV ID，取消注释并填写
-# preview_id = "你的预览环境 KV ID"
